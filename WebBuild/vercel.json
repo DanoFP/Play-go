@@ -3,38 +3,38 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Opener-Policy",  "value": "same-origin" },
         { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
       ]
     },
     {
-      "source": "/Build/WebBuild.wasm",
+      "source": "/Build/WebBuild.framework.js.gz",
       "headers": [
-        { "key": "Content-Type", "value": "application/wasm" },
+        { "key": "Content-Type",     "value": "application/javascript" },
         { "key": "Content-Encoding", "value": "gzip" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        { "key": "Cache-Control",    "value": "public, max-age=31536000, immutable, no-transform" }
       ]
     },
     {
-      "source": "/Build/WebBuild.framework.js",
+      "source": "/Build/WebBuild.wasm.gz",
       "headers": [
-        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Content-Type",     "value": "application/wasm" },
         { "key": "Content-Encoding", "value": "gzip" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        { "key": "Cache-Control",    "value": "public, max-age=31536000, immutable, no-transform" }
       ]
     },
     {
-      "source": "/Build/WebBuild.data",
+      "source": "/Build/WebBuild.data.gz",
       "headers": [
-        { "key": "Content-Type", "value": "application/octet-stream" },
+        { "key": "Content-Type",     "value": "application/octet-stream" },
         { "key": "Content-Encoding", "value": "gzip" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        { "key": "Cache-Control",    "value": "public, max-age=31536000, immutable, no-transform" }
       ]
     },
     {
       "source": "/Build/WebBuild.loader.js",
       "headers": [
-        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Content-Type",  "value": "application/javascript" },
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     },
@@ -44,10 +44,5 @@
         { "key": "Cache-Control", "value": "no-store" }
       ]
     }
-  ],
-  "rewrites": [
-    { "source": "/Build/WebBuild.framework.js", "destination": "/Build/WebBuild.framework.js.gz" },
-    { "source": "/Build/WebBuild.data",         "destination": "/Build/WebBuild.data.gz" },
-    { "source": "/Build/WebBuild.wasm",          "destination": "/Build/WebBuild.wasm.gz" }
   ]
 }
