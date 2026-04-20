@@ -16,7 +16,7 @@ public static class BuildScript
     public static void BuildWebGL()
     {
         // Scenes to include
-        string[] scenes = { "Assets/Scenes/SampleScene.unity" };
+        string[] scenes = { "Assets/RealmForge.unity" };
 
         var options = new BuildPlayerOptions
         {
