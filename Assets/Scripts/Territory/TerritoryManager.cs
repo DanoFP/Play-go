@@ -58,7 +58,9 @@ public class TerritoryManager : MonoBehaviour
         Destroy(marker.GetComponent<Collider>());
 
         var rend = marker.GetComponent<Renderer>();
-        var mat = new Material(Shader.Find("Standard"));
+        // Use renderer.material (instanced Default-Material) to avoid Shader.Find,
+        // which is stripped in WebGL Release builds.
+        var mat = rend.material;
         mat.color = TerritoryColor;
         mat.SetFloat("_Mode", 3);
         mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
@@ -68,7 +70,6 @@ public class TerritoryManager : MonoBehaviour
         mat.EnableKeyword("_ALPHABLEND_ON");
         mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
         mat.renderQueue = 3000;
-        rend.material = mat;
 
         _territoryMarkers.Add(marker);
     }

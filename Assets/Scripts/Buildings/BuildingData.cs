@@ -6,13 +6,23 @@ public enum BuildingType
     TownCenter,
     House,
     Farm,
-    LumberMill,
-    Quarry,
+    LumberMill,   // legacy / rename-kept for compatibility
+    Quarry,       // legacy / rename-kept for compatibility
     Market,
     Barracks,
+    ArcheryRange,
+    Blacksmith,
+    University,
+    Monastery,
+    SiegeWorkshop,
+    Castle,
+    Stable,   // cavalry training (Age 3)
     Tower,
     Wall,
-    Temple
+    Temple,
+    LumberCamp,   // deposit point for Wood
+    MiningCamp,   // deposit point for Stone (and Gold)
+    Mill          // deposit point for Food (farms)
 }
 
 [CreateAssetMenu(fileName = "BuildingData", menuName = "RealmForge/Building Data")]
@@ -23,40 +33,42 @@ public class BuildingData : ScriptableObject
     public string BuildingName;
     [TextArea(2, 4)]
     public string Description;
+    [Range(1, 4)]
+    public int MinAge = 1;
     public Sprite Icon;
 
     [Header("Dimensions")]
-    public int Width = 2;
+    public int Width  = 2;
     public int Height = 2;
 
     [Header("Cost")]
-    public int GoldCost = 50;
-    public int WoodCost = 100;
+    public int GoldCost  = 50;
+    public int WoodCost  = 100;
     public int StoneCost = 0;
-    public int FoodCost = 0;
+    public int FoodCost  = 0;
 
     [Header("Production (per second)")]
-    public int GoldProduction = 0;
-    public int WoodProduction = 0;
+    public int GoldProduction  = 0;
+    public int WoodProduction  = 0;
     public int StoneProduction = 0;
-    public int FoodProduction = 0;
+    public int FoodProduction  = 0;
 
     [Header("Stats")]
-    public int MaxHealth = 200;
+    public int MaxHealth          = 200;
     public int PopulationCapacity = 0;
     public int PopulationRequired = 0;
 
     [Header("Visual")]
     public Color BuildingColor = Color.white;
-    public float BuildTime = 3f;
+    public float BuildTime     = 3f;
 
     public Dictionary<ResourceType, int> GetCostDict()
     {
         var dict = new Dictionary<ResourceType, int>();
-        if (GoldCost > 0) dict[ResourceType.Gold] = GoldCost;
-        if (WoodCost > 0) dict[ResourceType.Wood] = WoodCost;
+        if (GoldCost  > 0) dict[ResourceType.Gold]  = GoldCost;
+        if (WoodCost  > 0) dict[ResourceType.Wood]  = WoodCost;
         if (StoneCost > 0) dict[ResourceType.Stone] = StoneCost;
-        if (FoodCost > 0) dict[ResourceType.Food] = FoodCost;
+        if (FoodCost  > 0) dict[ResourceType.Food]  = FoodCost;
         return dict;
     }
 }

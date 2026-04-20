@@ -6,29 +6,29 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
 
     [Header("Game State")]
-    public GameState CurrentState = GameState.Playing;
+    public GameState CurrentState = GameState.RaceSelection;
     public float GameTime { get; private set; }
 
     [Header("Player Settings")]
-    public string PlayerName = "Dano";
+    public string PlayerName = "Player";
     public int PlayerScore = 0;
 
-    public UnityEvent OnGamePaused = new UnityEvent();
-    public UnityEvent OnGameResumed = new UnityEvent();
+    public RaceData SelectedRace { get; private set; }
+
+    public UnityEvent OnGamePaused   = new UnityEvent();
+    public UnityEvent OnGameResumed  = new UnityEvent();
     public UnityEvent<int> OnScoreChanged = new UnityEvent<int>();
 
-    public enum GameState { Playing, Paused, Victory, Defeat }
+    public enum GameState { RaceSelection, Playing, Paused, Victory, Defeat }
+
+    // ── Victory check ─────────────────────────────────────────────────────────
+    float _victoryCheckTimer;
+    const float VictoryCheckInterval = 3f;
 
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        // Single-scene game — no DontDestroyOnLoad needed
-    }
-
-    void Start()
-    {
-        SetupInitialScene();
     }
 
     void Update()
@@ -36,25 +36,48 @@ public class GameManager : MonoBehaviour
         if (CurrentState == GameState.Playing)
         {
             GameTime += Time.deltaTime;
+
+            _victoryCheckTimer -= Time.deltaTime;
+            if (_victoryCheckTimer <= 0f)
+            {
+                _victoryCheckTimer = VictoryCheckInterval;
+                CheckVictoryConditions();
+            }
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (CurrentState == GameState.Playing || CurrentState == GameState.Paused)
         {
-            TogglePause();
+            if (Input.GetKeyDown(KeyCode.Escape))
+                TogglePause();
         }
     }
 
-    void SetupInitialScene()
+    // ── Game setup ────────────────────────────────────────────────────────────
+
+    public void StartGameWithRace(RaceData race)
     {
-        // Start with some initial resources
-        if (ResourceManager.Instance != null)
+        SelectedRace = race;
+
+        var rm = ResourceManager.Instance;
+        if (rm != null)
         {
-            ResourceManager.Instance.AddResource(ResourceType.Gold, 200);
-            ResourceManager.Instance.AddResource(ResourceType.Wood, 300);
-            ResourceManager.Instance.AddResource(ResourceType.Stone, 150);
-            ResourceManager.Instance.AddResource(ResourceType.Food, 100);
+            rm.AddResource(ResourceType.Gold,  race.StartGold);
+            rm.AddResource(ResourceType.Wood,  race.StartWood);
+            rm.AddResource(ResourceType.Stone, race.StartStone);
+            rm.AddResource(ResourceType.Food,  race.StartFood);
+
+            if (race.BonusGoldPerSec  > 0) rm.AddProduction(ResourceType.Gold,  race.BonusGoldPerSec);
+            if (race.BonusWoodPerSec  > 0) rm.AddProduction(ResourceType.Wood,  race.BonusWoodPerSec);
+            if (race.BonusStonePerSec > 0) rm.AddProduction(ResourceType.Stone, race.BonusStonePerSec);
+            if (race.BonusFoodPerSec  > 0) rm.AddProduction(ResourceType.Food,  race.BonusFoodPerSec);
         }
+
+        CurrentState = GameState.Playing;
+        Time.timeScale = 1f;
+        _victoryCheckTimer = VictoryCheckInterval + 5f; // grace period before first check
     }
+
+    // ── Pause ─────────────────────────────────────────────────────────────────
 
     public void TogglePause()
     {
@@ -72,16 +95,77 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // ── Score ─────────────────────────────────────────────────────────────────
+
     public void AddScore(int amount)
     {
         PlayerScore += amount;
         OnScoreChanged?.Invoke(PlayerScore);
     }
 
+    // ── Victory / Defeat ──────────────────────────────────────────────────────
+
+    void CheckVictoryConditions()
+    {
+        bool playerAlive = PlayerIsAlive();
+        bool aiAlive     = AIController.Instance != null && AIController.Instance.HasBuildings();
+
+        if (!playerAlive)
+        {
+            TriggerDefeat();
+        }
+        else if (!aiAlive && AIController.Instance != null)
+        {
+            // Also wait for all AI units to die before declaring victory
+            if (!AIController.Instance.HasUnits())
+                TriggerVictory();
+        }
+    }
+
+    bool PlayerIsAlive()
+    {
+        // Player is alive if they have any built building OR any villager OR any military unit
+        if (Villager.Count > 0) return true;
+
+        foreach (var u in MilitaryUnit.AllUnits)
+            if (!u.IsAI && u.IsAlive) return true;
+
+        var buildings = Object.FindObjectsByType<Building>(FindObjectsSortMode.None);
+        foreach (var b in buildings)
+            if (!b.IsAI && b.IsBuilt) return true;
+
+        return false;
+    }
+
+    public void TriggerVictory()
+    {
+        if (CurrentState != GameState.Playing) return;
+        CurrentState = GameState.Victory;
+        Time.timeScale = 0f;
+        Debug.Log("[GameManager] VICTORY!");
+    }
+
+    public void TriggerDefeat()
+    {
+        if (CurrentState != GameState.Playing) return;
+        CurrentState = GameState.Defeat;
+        Time.timeScale = 0f;
+        Debug.Log("[GameManager] DEFEAT!");
+    }
+
+    public void RestartGame()
+    {
+        Time.timeScale = 1f;
+        UnityEngine.SceneManagement.SceneManager.LoadScene(
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
     public string GetFormattedTime()
     {
         int minutes = Mathf.FloorToInt(GameTime / 60f);
-        int seconds = Mathf.FloorToInt(GameTime % 60f);
+        int seconds  = Mathf.FloorToInt(GameTime % 60f);
         return $"{minutes:00}:{seconds:00}";
     }
 }
