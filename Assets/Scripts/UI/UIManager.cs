@@ -29,6 +29,15 @@ public class UIManager : MonoBehaviour
     Villager[]     _minimapVillagers = new Villager[0];
     float          _minimapCacheTimer;
 
+    // ── Market trading ────────────────────────────────────────────────────────
+    // Index 0=Food, 1=Wood, 2=Stone — "price in gold per 100 units"
+    readonly float[] _marketRates = { 100f, 100f, 100f };
+    float _marketNormTimer;
+    const float MarketNormInterval = 30f;
+    const int   MarketTradeAmt     = 100;
+    static readonly ResourceType[] _marketResTypes = { ResourceType.Food, ResourceType.Wood, ResourceType.Stone };
+    static readonly string[]       _marketResNames = { "Food", "Wood", "Stone" };
+
     // ── IMGUI styles ──────────────────────────────────────────────────────────
     GUIStyle _labelStyle;
     GUIStyle _titleStyle;
@@ -66,6 +75,18 @@ public class UIManager : MonoBehaviour
             _minimapNodes     = Object.FindObjectsByType<ResourceNode>(FindObjectsSortMode.None);
             _minimapBuildings = Object.FindObjectsByType<Building>(FindObjectsSortMode.None);
             _minimapVillagers = Object.FindObjectsByType<Villager>(FindObjectsSortMode.None);
+        }
+
+        // Market: slowly normalize prices back toward 100 gold / 100 resources
+        if (GameManager.Instance?.CurrentState == GameManager.GameState.Playing)
+        {
+            _marketNormTimer -= Time.deltaTime;
+            if (_marketNormTimer <= 0f)
+            {
+                _marketNormTimer = MarketNormInterval;
+                for (int i = 0; i < _marketRates.Length; i++)
+                    _marketRates[i] = Mathf.MoveTowards(_marketRates[i], 100f, 1f);
+            }
         }
     }
 
@@ -400,10 +421,13 @@ public class UIManager : MonoBehaviour
                            bm != null && bm.TrainableUnits.ContainsKey(_selectedBuilding.Data.Type);
         bool hasResearch = _selectedBuilding != null && _selectedBuilding.IsBuilt &&
                            researchManager != null && researchManager.HasResearchForBuilding(_selectedBuilding.Data.Type);
+        bool isMarket    = _selectedBuilding != null && _selectedBuilding.IsBuilt &&
+                           _selectedBuilding.Data?.Type == BuildingType.Market;
 
         float ph = 210f;
         if (hasTraining) ph += 130f;
         if (hasResearch) ph += 170f;
+        if (isMarket)    ph += 200f;
         float pw = 266f, px = sw - pw - 12, py = sh - ph - 78;
         DrawRect(new Rect(px, py, pw, ph), new Color(0.07f, 0.07f, 0.12f, 0.97f));
 
@@ -530,7 +554,83 @@ public class UIManager : MonoBehaviour
                 DrawRect(new Rect(px + 8, py2 + 18, pw - 16, 10), new Color(0.12f, 0.12f, 0.18f));
                 DrawRect(new Rect(px + 8, py2 + 18, (pw - 16) * researchManager.CurrentProgress, 10), new Color(0.8f, 0.7f, 0.2f));
             }
+
+            sectionY += 170f;
         }
+
+        if (isMarket)
+            DrawMarketPanel(px, sectionY, pw);
+    }
+
+    void DrawMarketPanel(float px, float sectionY, float pw)
+    {
+        var rm = ResourceManager.Instance;
+        if (rm == null) return;
+
+        DrawRect(new Rect(px + 8, sectionY, pw - 16, 1f), new Color(0.3f, 0.3f, 0.5f, 0.5f));
+        _labelStyle.fontSize = 10; _labelStyle.normal.textColor = new Color(1f, 0.82f, 0.25f);
+        GUI.Label(new Rect(px + 8, sectionY + 6, pw - 16, 18), "MARKET TRADE  (per 100 units)", _labelStyle);
+
+        // One row per resource: [Label] [Buy Xg] [Sell +Xg] + thin price bar
+        for (int i = 0; i < 3; i++)
+        {
+            float rowY   = sectionY + 28 + i * 56;
+            int   buyRate  = Mathf.RoundToInt(_marketRates[i]);
+            int   sellRate = Mathf.RoundToInt(_marketRates[i] * 0.65f);
+            var   rt       = _marketResTypes[i];
+            string rn      = _marketResNames[i];
+
+            // Resource label
+            Color labelColor = i == 0 ? new Color(0.95f, 0.65f, 0.4f) :
+                               i == 1 ? new Color(0.5f, 0.85f, 0.3f) :
+                                        new Color(0.8f, 0.8f, 0.8f);
+            _labelStyle.fontSize = 11; _labelStyle.normal.textColor = labelColor;
+            GUI.Label(new Rect(px + 8, rowY + 4, 44, 20), rn, _labelStyle);
+
+            // Buy
+            bool canBuy  = rm.HasResources(ResourceType.Gold, buyRate);
+            GUI.backgroundColor = canBuy ? new Color(0.15f, 0.38f, 0.20f) : new Color(0.22f, 0.14f, 0.14f);
+            _btnStyle.fontSize = 10;
+            if (GUI.Button(new Rect(px + 56, rowY, (pw - 72) / 2f - 2, 26), $"Buy {buyRate}G", _btnStyle))
+            {
+                if (!canBuy) ShowMessage("Not enough gold!");
+                else
+                {
+                    rm.RemoveResource(ResourceType.Gold, buyRate);
+                    rm.AddResource(rt, MarketTradeAmt);
+                    _marketRates[i] = Mathf.Min(300f, _marketRates[i] + 5f);
+                    ShowMessage($"Bought 100 {rn}.");
+                }
+            }
+
+            // Sell
+            bool canSell = rm.HasResources(rt, MarketTradeAmt);
+            GUI.backgroundColor = canSell ? new Color(0.38f, 0.22f, 0.12f) : new Color(0.22f, 0.14f, 0.14f);
+            float sellBtnX = px + 56 + (pw - 72) / 2f + 2;
+            if (GUI.Button(new Rect(sellBtnX, rowY, (pw - 72) / 2f - 2, 26), $"Sell +{sellRate}G", _btnStyle))
+            {
+                if (!canSell) ShowMessage($"Need 100 {rn} to sell!");
+                else
+                {
+                    rm.RemoveResource(rt, MarketTradeAmt);
+                    rm.AddResource(ResourceType.Gold, sellRate);
+                    _marketRates[i] = Mathf.Max(50f, _marketRates[i] - 5f);
+                    ShowMessage($"Sold 100 {rn} for {sellRate} gold.");
+                }
+            }
+            GUI.backgroundColor = Color.white;
+            _btnStyle.fontSize = 14;
+
+            // Rate bar (visual price indicator)
+            float rateNorm = (_marketRates[i] - 50f) / 250f;
+            DrawRect(new Rect(px + 8, rowY + 32, pw - 16, 6), new Color(0.12f, 0.12f, 0.18f));
+            DrawRect(new Rect(px + 8, rowY + 32, (pw - 16) * rateNorm, 6),
+                     Color.Lerp(new Color(0.2f, 0.8f, 0.3f), new Color(0.9f, 0.2f, 0.2f), rateNorm));
+        }
+
+        _labelStyle.fontSize = 9; _labelStyle.normal.textColor = new Color(0.42f, 0.42f, 0.52f);
+        GUI.Label(new Rect(px + 8, sectionY + 28 + 3 * 56, pw - 16, 18),
+            "Prices fluctuate with each trade.", _labelStyle);
     }
 
     bool CanAffordUnit(UnitData unit)
@@ -567,7 +667,8 @@ public class UIManager : MonoBehaviour
     void DrawMilitaryInfo(float sw, float sh)
     {
         if (_selectedMilitary == null) return;
-        float pw = 220, ph = 160, px = sw - pw - 12, py = sh - ph - 78;
+        bool isTrebuchet = _selectedMilitary.Data?.Type == UnitType.Trebuchet;
+        float pw = 220, ph = isTrebuchet ? 210f : 160f, px = sw - pw - 12, py = sh - ph - 78;
         DrawRect(new Rect(px, py, pw, ph), new Color(0.07f, 0.07f, 0.12f, 0.97f));
 
         _labelStyle.fontSize = 10; _labelStyle.normal.textColor = new Color(0.5f, 0.55f, 0.75f);
@@ -596,6 +697,28 @@ public class UIManager : MonoBehaviour
         DrawRect(new Rect(px + 8, py + 114, (pw - 16) * pct, 14), Color.Lerp(Color.red, new Color(0.25f, 0.8f, 0.3f), pct));
         _labelStyle.fontSize = 10; _labelStyle.normal.textColor = Color.white;
         GUI.Label(new Rect(px + 8, py + 132, pw - 16, 20), $"{(int)_selectedMilitary.HP} / {(int)_selectedMilitary.MaxHP}", _labelStyle);
+
+        // Trebuchet deploy / pack button
+        if (isTrebuchet)
+        {
+            float btnY = py + 158;
+            bool animating = _selectedMilitary.TrebuchetAnimating;
+            bool deployed  = _selectedMilitary.TrebuchetDeployed;
+            string label   = animating ? (deployed ? "Packing..." : "Deploying...") :
+                             deployed  ? "  Pack Up" : "  Deploy";
+            GUI.backgroundColor = animating ? new Color(0.3f, 0.3f, 0.3f)
+                                : deployed   ? new Color(0.6f, 0.35f, 0.15f)
+                                             : new Color(0.15f, 0.45f, 0.25f);
+            _btnStyle.fontSize = 13;
+            if (GUI.Button(new Rect(px + 8, btnY, pw - 16, 36), label, _btnStyle))
+                _selectedMilitary.TrebuchetToggleDeploy();
+            _btnStyle.fontSize = 14;
+            GUI.backgroundColor = Color.white;
+
+            _labelStyle.fontSize = 10; _labelStyle.normal.textColor = new Color(0.55f, 0.55f, 0.65f);
+            string statusText = animating ? "Animating..." : deployed ? "Deployed — can fire" : "Packed — can move";
+            GUI.Label(new Rect(px + 8, btnY + 38, pw - 16, 18), statusText, _labelStyle);
+        }
     }
 
     // ── MINIMAP ───────────────────────────────────────────────────────────────
@@ -705,12 +828,34 @@ public class UIManager : MonoBehaviour
             : "Your civilization has fallen.";
         GUI.Label(new Rect(0, sh / 2f - 30, sw, 30), subText, _labelStyle);
 
-        // Stats
+        // Stats panel
         var gm = GameManager.Instance;
         if (gm != null)
         {
-            _labelStyle.fontSize = 14; _labelStyle.normal.textColor = new Color(0.7f, 0.8f, 0.9f);
-            GUI.Label(new Rect(0, sh / 2f + 10, sw, 26), $"Time played: {gm.GetFormattedTime()}   Score: {gm.PlayerScore}", _labelStyle);
+            float statW = 480f, statH = 120f;
+            float statX = sw / 2f - statW / 2f, statY = sh / 2f + 10f;
+            DrawRect(new Rect(statX, statY, statW, statH), new Color(0.06f, 0.06f, 0.12f, 0.85f));
+
+            _labelStyle.fontSize = 13; _labelStyle.normal.textColor = new Color(0.7f, 0.8f, 0.9f);
+            _labelStyle.alignment = TextAnchor.UpperCenter;
+
+            GUI.Label(new Rect(statX, statY + 8, statW, 22),
+                $"Time: {gm.GetFormattedTime()}   |   Score: {gm.PlayerScore}", _labelStyle);
+
+            _labelStyle.fontSize = 12; _labelStyle.normal.textColor = new Color(0.62f, 0.72f, 0.82f);
+
+            string row1 = $"Buildings built: {gm.BuildingsBuilt}   |   Units lost: {gm.UnitsLost}";
+            GUI.Label(new Rect(statX, statY + 36, statW, 20), row1, _labelStyle);
+
+            string row2 = $"Enemies killed: {gm.EnemiesKilled}   |   Relics secured: {gm.RelicsDeposited}";
+            GUI.Label(new Rect(statX, statY + 60, statW, 20), row2, _labelStyle);
+
+            var race = gm.SelectedRace;
+            if (race != null)
+            {
+                _labelStyle.fontSize = 11; _labelStyle.normal.textColor = race.PrimaryColor;
+                GUI.Label(new Rect(statX, statY + 86, statW, 20), $"Civilization: {race.Name} — {race.Title}", _labelStyle);
+            }
         }
         _labelStyle.alignment = TextAnchor.UpperLeft;
 

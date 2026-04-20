@@ -331,39 +331,25 @@ public class Villager : MonoBehaviour
         var go = new GameObject("Villager");
         go.transform.position = new Vector3(pos.x, 0f, pos.z);
 
-        // Torso (capsule)
-        var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        body.name = "Body";
-        body.transform.SetParent(go.transform);
-        body.transform.localPosition = new Vector3(0f, 0.65f, 0f);
-        body.transform.localScale    = new Vector3(0.32f, 0.38f, 0.32f);
-        body.GetComponent<Renderer>().material.color = new Color(0.85f, 0.72f, 0.55f);
-        Destroy(body.GetComponent<Collider>());
+        // Pixel-art sprite
+        var spriteGO = SpriteQuad.Create(PixelArtSprites.VillagerSprite(), 1.2f, 1.2f, 0.06f, go.transform);
+        spriteGO.name = "Body";
 
-        // Head
-        var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        head.name = "Head";
-        head.transform.SetParent(go.transform);
-        head.transform.localPosition = new Vector3(0f, 1.28f, 0f);
-        head.transform.localScale    = new Vector3(0.26f, 0.26f, 0.26f);
-        head.GetComponent<Renderer>().material.color = new Color(0.85f, 0.72f, 0.55f);
-        Destroy(head.GetComponent<Collider>());
-
-        // Selection ring (starts hidden)
-        var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        // Selection ring — flat quad glow
+        var ring = GameObject.CreatePrimitive(PrimitiveType.Quad);
         ring.name = "SelectRing";
         ring.transform.SetParent(go.transform);
-        ring.transform.localPosition = new Vector3(0f, 0.02f, 0f);
-        ring.transform.localScale    = new Vector3(1.0f, 0.04f, 1.0f);
-        ring.GetComponent<Renderer>().material.color = new Color(0.2f, 0.9f, 1f);
+        ring.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+        ring.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        ring.transform.localScale    = new Vector3(1.6f, 1.6f, 1f);
+        ring.GetComponent<Renderer>().material.color = new Color(0.2f, 0.9f, 1f, 0.5f);
         Destroy(ring.GetComponent<Collider>());
         ring.SetActive(false);
 
-        // Collider on root so Physics.Raycast can select the villager
-        var col = go.AddComponent<CapsuleCollider>();
-        col.center = new Vector3(0f, 0.75f, 0f);
-        col.height = 1.5f;
-        col.radius = 0.35f;
+        // Flat box collider for top-down raycast selection
+        var col = go.AddComponent<BoxCollider>();
+        col.center = new Vector3(0f, 0.1f, 0f);
+        col.size   = new Vector3(1.2f, 0.2f, 1.2f);
 
         var v = go.AddComponent<Villager>();
         v._selectionRing = ring;

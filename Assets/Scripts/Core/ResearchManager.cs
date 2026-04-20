@@ -139,9 +139,21 @@ public class ResearchManager : MonoBehaviour
         if      (data.Id == "horse_collar")    ApplyHorseCollarToExistingFarms();
         else if (data.Id == "town_watch")      RevealAroundPlayerBuildings();
         else if (data.Id == "fortified_wall")  ApplyFortifiedWallToExistingWalls();
+        else if (data.Id == "masonry")         ApplyMasonryToExistingBuildings();
 
         UIManager.Instance?.ShowMessage(data.Name + " completed!");
         _current = null;
+    }
+
+    void ApplyMasonryToExistingBuildings()
+    {
+        var buildings = Object.FindObjectsByType<Building>(FindObjectsSortMode.None);
+        foreach (var b in buildings)
+        {
+            if (b == null || b.IsAI || !b.IsBuilt || b.Data == null) continue;
+            int bonus = Mathf.Max(1, Mathf.RoundToInt(b.Data.MaxHealth * 0.1f));
+            b.AddHealth(bonus);
+        }
     }
 
     void ApplyFortifiedWallToExistingWalls()
@@ -249,6 +261,7 @@ public class ResearchManager : MonoBehaviour
         return 0f;
     }
 
+    public bool  HasMasonry()          => IsResearched("masonry");
     public float GetTowerAttackBonus() => IsResearched("guard_tower") ? 3f : 0f;
     public float GetTowerRangeBonus()  => IsResearched("guard_tower") ? 2f : 0f;
 
@@ -262,7 +275,7 @@ public class ResearchManager : MonoBehaviour
         type == UnitType.Militia || type == UnitType.Spearman;
 
     bool IsSiege(UnitType type) =>
-        type == UnitType.BatteringRam || type == UnitType.Mangonel;
+        type == UnitType.BatteringRam || type == UnitType.Mangonel || type == UnitType.Trebuchet;
 
     bool IsCavalry(UnitType type) =>
         type == UnitType.Scout || type == UnitType.Knight;

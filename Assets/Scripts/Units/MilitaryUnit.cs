@@ -46,20 +46,50 @@ public class MilitaryUnit : MonoBehaviour
     GameObject _healthBarGO;
     Transform  _healthBarFill;
 
-    // ── Monk healing ─────────────────────────────────────────────────────────
+    // ── Monk healing & faith ─────────────────────────────────────────────────
     float _healTimer;
     const float HealRate     = 2f;   // seconds between heals
     const float HealAmount   = 5f;   // HP per tick
     const float HealRadius   = 6f;   // world-units
+
+    // Monk: relic carrying
+    bool  _isCarryingRelic;
+
+    // Monk: faith & conversion
+    float _faith = 50f;
+    const float MaxFaith            = 100f;
+    const float FaithRegenRate      = 2f;    // per second
+    const float ConversionFaithCost = 30f;
+    const float ConversionTime      = 18f;   // seconds
+    const float ConversionRange     = 10f;
+    MilitaryUnit _conversionTarget;
+    float        _conversionTimer;
+    bool         _isConverting;
+
+    // ── Trebuchet deploy ──────────────────────────────────────────────────────
+    bool  _trebuchetDeployed;
+    bool  _trebuchetAnimating;
+    float _trebuchetAnimTimer;
+    const float TrebuchetDeployTime = 5f;
+
+    public bool TrebuchetDeployed  => _trebuchetDeployed;
+    public bool TrebuchetAnimating => _trebuchetAnimating;
+
+    // ── Warchief aura ─────────────────────────────────────────────────────────
+    const float WarchiefAuraRadius = 5f;
+    const float WarchiefAuraBonus  = 0.05f; // +5% attack
 
     // ── Fog ───────────────────────────────────────────────────────────────────
     float _fogTimer;
     const float FogRevealRate = 0.5f;
 
     // ── Properties ────────────────────────────────────────────────────────────
-    public bool IsAlive => _hp > 0f && gameObject.activeSelf;
-    public float HP     => _hp;
-    public float MaxHP  => Data != null ? Data.MaxHP : 1f;
+    public bool  IsAlive       => _hp > 0f && gameObject.activeSelf;
+    public float HP            => _hp;
+    public float MaxHP         => Data != null ? Data.MaxHP : 1f;
+    public float Faith         => _faith;
+    public bool  IsConverting  => _isConverting;
+    public bool  IsCarryingRelic => _isCarryingRelic;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -90,22 +120,109 @@ public class MilitaryUnit : MonoBehaviour
         _attackCooldown -= Time.deltaTime;
         _buildingSearchCooldown -= Time.deltaTime;
 
-        // Monk: heal nearby friendly units instead of attacking
+        // Trebuchet: deploy / undeploy animation (blocks all other actions)
+        if (Data?.Type == UnitType.Trebuchet && _trebuchetAnimating)
+        {
+            _trebuchetAnimTimer -= Time.deltaTime;
+            if (_trebuchetAnimTimer <= 0f)
+            {
+                _trebuchetAnimating = false;
+                _trebuchetDeployed  = !_trebuchetDeployed;
+                UIManager.Instance?.ShowMessage(_trebuchetDeployed ? "Trebuchet deployed!" : "Trebuchet packed!");
+            }
+            var p0 = transform.position; p0.y = 0f; transform.position = p0;
+            if (_healthBarGO != null && Camera.main != null)
+                _healthBarGO.transform.rotation = Camera.main.transform.rotation;
+            return;
+        }
+
+        // Monk: faith, heal, relic, conversion — skip main combat FSM
         if (Data != null && Data.Type == UnitType.Monk)
         {
+            // Faith regeneration
+            if (!IsAI)
+            {
+                _faith = Mathf.Min(MaxFaith, _faith + FaithRegenRate * Time.deltaTime);
+            }
+
+            // Heal nearby friendlies
             _healTimer -= Time.deltaTime;
             if (_healTimer <= 0f)
             {
                 _healTimer = HealRate;
-                HealNearbyFriendlies();
+                if (!_isConverting) HealNearbyFriendlies();
             }
-            // Monks still move on command; skip combat FSM
+
+            // Relic pickup (player monks only)
+            if (!IsAI && !_isCarryingRelic)
+            {
+                foreach (var relic in Relic.All)
+                {
+                    if (relic == null || relic.IsCollected) continue;
+                    if (Vector3.Distance(transform.position, relic.transform.position) < 1.8f)
+                    {
+                        relic.Collect();
+                        _isCarryingRelic = true;
+                        UIManager.Instance?.ShowMessage("Relic collected! Bring it to the Monastery.");
+                        break;
+                    }
+                }
+            }
+            else if (!IsAI && _isCarryingRelic)
+            {
+                // Deposit relic at Monastery
+                var buildings = Object.FindObjectsByType<Building>(FindObjectsSortMode.None);
+                foreach (var b in buildings)
+                {
+                    if (b == null || b.IsAI || !b.IsBuilt || b.Data?.Type != BuildingType.Monastery) continue;
+                    if (Vector3.Distance(transform.position, b.transform.position) < 3.5f)
+                    {
+                        _isCarryingRelic = false;
+                        // Find and deposit the carried relic
+                        foreach (var r in Relic.All)
+                        {
+                            if (r != null && r.IsCollected) { r.Deposit(); break; }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Conversion logic
+            if (_isConverting)
+            {
+                if (_conversionTarget == null || !_conversionTarget.IsAlive)
+                {
+                    _isConverting = false;
+                    _conversionTarget = null;
+                }
+                else
+                {
+                    float dist = Vector3.Distance(transform.position, _conversionTarget.transform.position);
+                    if (dist > ConversionRange + 2f)
+                    {
+                        _isConverting = false;
+                        UIManager.Instance?.ShowMessage("Conversion failed — target out of range.");
+                        _conversionTarget = null;
+                    }
+                    else
+                    {
+                        // Face the target
+                        Vector3 dir = (_conversionTarget.transform.position - transform.position); dir.y = 0f;
+                        if (dir.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(dir);
+
+                        _conversionTimer -= Time.deltaTime;
+                        if (_conversionTimer <= 0f)
+                            CompleteConversion();
+                    }
+                }
+            }
+
             if (_state == State.CommandedMove)
                 DoCommandedMove();
-            else
+            else if (!_isConverting)
                 _state = State.Idle;
 
-            // Stay on ground + health bar rotation handled below
             var p2 = transform.position; p2.y = 0f; transform.position = p2;
             if (_healthBarGO != null && Camera.main != null)
                 _healthBarGO.transform.rotation = Camera.main.transform.rotation;
@@ -262,14 +379,15 @@ public class MilitaryUnit : MonoBehaviour
         float dmg = GetEffectiveAttack();
         bool isRanged = GetEffectiveAttackRange() > 2f;
 
-        // Mangonel: area-of-effect splash at target location
-        if (Data != null && Data.Type == UnitType.Mangonel)
+        // Mangonel / Trebuchet: area-of-effect splash at target location
+        if (Data != null && (Data.Type == UnitType.Mangonel || Data.Type == UnitType.Trebuchet))
         {
             Vector3 splashPos = targetUnit != null
                 ? targetUnit.transform.position
                 : targetBuilding != null ? targetBuilding.transform.position : transform.position;
-            Vector3 origin = transform.position + Vector3.up * 0.8f;
-            Projectile.SpawnAt(origin, splashPos, dmg, DamageType.Siege, splashRadius: 3.5f, isAI: IsAI);
+            Vector3 origin = transform.position + Vector3.up * 1.2f;
+            float radius = Data.Type == UnitType.Trebuchet ? 4.5f : 3.5f;
+            Projectile.SpawnAt(origin, splashPos, dmg, DamageType.Siege, splashRadius: radius, isAI: IsAI);
             return;
         }
 
@@ -292,8 +410,27 @@ public class MilitaryUnit : MonoBehaviour
 
     // ── Public commands ───────────────────────────────────────────────────────
 
+    public void TrebuchetToggleDeploy()
+    {
+        if (Data?.Type != UnitType.Trebuchet) return;
+        if (_trebuchetAnimating) { UIManager.Instance?.ShowMessage("Trebuchet is already animating..."); return; }
+        _trebuchetAnimating = true;
+        _trebuchetAnimTimer = TrebuchetDeployTime;
+        // Stop any movement or attack
+        ClearPath();
+        _state          = State.Idle;
+        _targetUnit     = null;
+        _targetBuilding = null;
+    }
+
     public void CommandMoveTo(Vector3 pos)
     {
+        // Deployed trebuchet cannot move — must pack first
+        if (Data?.Type == UnitType.Trebuchet && _trebuchetDeployed)
+        {
+            UIManager.Instance?.ShowMessage("Pack the Trebuchet before moving!");
+            return;
+        }
         _moveTarget   = new Vector3(pos.x, 0f, pos.z);
         _targetUnit   = null;
         _targetBuilding = null;
@@ -303,10 +440,56 @@ public class MilitaryUnit : MonoBehaviour
 
     public void CommandAttack(MilitaryUnit target)
     {
+        // Monks convert instead of attacking
+        if (Data?.Type == UnitType.Monk && !IsAI && target != null && target.IsAI)
+        {
+            StartConversion(target);
+            return;
+        }
         _targetUnit     = target;
         _targetBuilding = null;
         ClearPath();
         _state          = State.MovingToTarget;
+    }
+
+    public void StartConversion(MilitaryUnit target)
+    {
+        if (target == null || !target.IsAlive) return;
+        if (_faith < ConversionFaithCost)
+        {
+            UIManager.Instance?.ShowMessage($"Not enough faith! ({(int)_faith}/{(int)ConversionFaithCost})");
+            return;
+        }
+        _faith           -= ConversionFaithCost;
+        _conversionTarget = target;
+        _conversionTimer  = ConversionTime;
+        _isConverting     = true;
+        // Move close to target
+        CommandMoveTo(target.transform.position);
+    }
+
+    void CompleteConversion()
+    {
+        if (_conversionTarget == null) return;
+        var t = _conversionTarget;
+        _isConverting     = false;
+        _conversionTarget = null;
+
+        // Switch sides: remove from AI, give to player
+        AIController.Instance?.UnregisterUnit(t);
+        t.IsAI = false;
+        ResourceManager.Instance?.ReservePopulation(t.Data?.PopulationCost ?? 1);
+
+        // Swap body color to player color
+        var renderers = t.GetComponentsInChildren<Renderer>();
+        foreach (var r in renderers)
+        {
+            if (r.gameObject.name == "Body" || r.gameObject.name == "SelectRing") continue;
+            if (t.Data != null && r.gameObject.name == "Body") r.material.color = t.Data.UnitColor;
+        }
+
+        UIManager.Instance?.ShowMessage("Unit converted!");
+        GameManager.Instance?.AddScore(50);
     }
 
     public void CommandAttackBuilding(Building target)
@@ -470,7 +653,14 @@ public class MilitaryUnit : MonoBehaviour
     {
         if (_healthBarFill == null || Data == null) return;
         float pct = Mathf.Clamp01(_hp / Data.MaxHP);
-        _healthBarFill.localScale = new Vector3(1.0f * pct, 0.08f, 0.04f);
+        // Flat sprite health bar: scale X and shift left so it shrinks from right
+        float fullW = _healthBarFill.parent != null
+            ? (_healthBarFill.parent.GetComponent<MeshRenderer>() == null ? 1.15f : 1.15f)
+            : 1.15f;
+        _healthBarFill.localScale = new Vector3(fullW * pct, _healthBarFill.localScale.y, 1f);
+        _healthBarFill.localPosition = new Vector3(-fullW * (1f - pct) * 0.5f,
+                                                    _healthBarFill.localPosition.y,
+                                                    _healthBarFill.localPosition.z);
         var rend = _healthBarFill.GetComponent<Renderer>();
         if (rend) rend.material.color = Color.Lerp(Color.red, Color.green, pct);
     }
@@ -480,11 +670,32 @@ public class MilitaryUnit : MonoBehaviour
         float baseAttack = Data?.Attack ?? 4f;
         if (!IsAI)
             baseAttack += ResearchManager.Instance?.GetAttackBonus(Data) ?? 0f;
+        // Warchief aura: +5% attack for all friendly units within range
+        baseAttack *= (1f + GetWarchiefAuraBonus(transform.position, IsAI));
         return baseAttack;
+    }
+
+    // ── Warchief aura (static helper) ─────────────────────────────────────────
+
+    static float GetWarchiefAuraBonus(Vector3 pos, bool isAI)
+    {
+        foreach (var u in _all)
+        {
+            if (u == null || !u.IsAlive) continue;
+            if (u.IsAI != isAI) continue;
+            if (u.Data?.Type != UnitType.Warchief) continue;
+            if (Vector3.Distance(pos, u.transform.position) <= WarchiefAuraRadius)
+                return WarchiefAuraBonus;
+        }
+        return 0f;
     }
 
     float GetEffectiveAttackRange()
     {
+        // Trebuchet can only attack when deployed
+        if (Data?.Type == UnitType.Trebuchet)
+            return _trebuchetDeployed ? Data.AttackRange : 0.2f;
+
         float baseRange = Data?.AttackRange ?? 1.5f;
         if (!IsAI)
             baseRange += ResearchManager.Instance?.GetRangeBonus(Data) ?? 0f;
@@ -506,6 +717,12 @@ public class MilitaryUnit : MonoBehaviour
 
     IEnumerator DieRoutine()
     {
+        // Notify stats before destruction
+        if (!IsAI)
+            GameManager.Instance?.NotifyUnitLost();
+        else
+            GameManager.Instance?.NotifyEnemyKilled();
+
         float t = 0f;
         Vector3 startScale = transform.localScale;
         while (t < 0.3f)
@@ -533,125 +750,50 @@ public class MilitaryUnit : MonoBehaviour
         var go = new GameObject(data.UnitName + (isAI ? "_AI" : ""));
         go.transform.position = new Vector3(pos.x, 0f, pos.z);
 
-        Color bodyColor = isAI ? new Color(0.7f, 0.15f, 0.15f) : data.UnitColor;
-        Renderer bodyRenderer = null; // captured from humanoid block; null for siege units
+        // ── Pixel-art sprite quad ─────────────────────────────────────────────
+        float spriteSize = (data.Type == UnitType.BatteringRam || data.Type == UnitType.Mangonel ||
+                            data.Type == UnitType.Trebuchet) ? 2.2f : 1.4f;
+        var tex = PixelArtSprites.UnitSprite(data.Type, isAI);
+        var spriteGO = SpriteQuad.Create(tex, spriteSize, spriteSize, 0.06f, go.transform);
+        spriteGO.name = "Body";
+        var bodyRenderer = spriteGO.GetComponent<Renderer>();
 
-        // ── Siege engine: entirely different mesh ────────────────────────────
-        if (data.Type == UnitType.BatteringRam || data.Type == UnitType.Mangonel)
-        {
-            BuildSiegeMesh(go, data, isAI);
-            goto FinishUnit;
-        }
-
-        {
-        // Body
-        var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        body.name = "Body";
-        body.transform.SetParent(go.transform);
-        float bodyScale = data.Type == UnitType.Knight ? 0.40f : 0.30f;
-        body.transform.localPosition = new Vector3(0f, 0.55f, 0f);
-        body.transform.localScale    = new Vector3(bodyScale, 0.40f, bodyScale);
-        body.GetComponent<Renderer>().material.color = bodyColor;
-        Object.Destroy(body.GetComponent<Collider>());
-        bodyRenderer = body.GetComponent<Renderer>();
-
-        // Weapon
-        if (data.Type == UnitType.Monk)
-        {
-            // Staff
-            var staff = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            staff.transform.SetParent(go.transform);
-            staff.transform.localPosition = new Vector3(0.22f, 0.72f, 0.1f);
-            staff.transform.localRotation = Quaternion.Euler(0f, 0f, 5f);
-            staff.transform.localScale    = new Vector3(0.05f, 0.45f, 0.05f);
-            staff.GetComponent<Renderer>().material.color = new Color(0.42f, 0.28f, 0.10f);
-            Object.Destroy(staff.GetComponent<Collider>());
-        }
-        else if (data.Type == UnitType.Knight)
-        {
-            // Lance
-            var lance = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            lance.transform.SetParent(go.transform);
-            lance.transform.localPosition = new Vector3(0.25f, 0.65f, 0.22f);
-            lance.transform.localRotation = Quaternion.Euler(75f, 0f, 0f);
-            lance.transform.localScale    = new Vector3(0.05f, 0.55f, 0.05f);
-            lance.GetComponent<Renderer>().material.color = new Color(0.65f, 0.50f, 0.30f);
-            Object.Destroy(lance.GetComponent<Collider>());
-        }
-        else if (data.AttackRange > 2f)
-        {
-            // Bow (ranged)
-            var bow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            bow.transform.SetParent(go.transform);
-            bow.transform.localPosition = new Vector3(0.2f, 0.6f, 0.1f);
-            bow.transform.localRotation = Quaternion.Euler(0f, 0f, 75f);
-            bow.transform.localScale    = new Vector3(0.04f, 0.22f, 0.04f);
-            bow.GetComponent<Renderer>().material.color = new Color(0.35f, 0.22f, 0.08f);
-            Object.Destroy(bow.GetComponent<Collider>());
-        }
-        else
-        {
-            // Sword (melee)
-            var sword = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            sword.transform.SetParent(go.transform);
-            sword.transform.localPosition = new Vector3(0.22f, 0.58f, 0.1f);
-            sword.transform.localRotation = Quaternion.Euler(0f, 0f, 15f);
-            sword.transform.localScale    = new Vector3(0.06f, 0.35f, 0.05f);
-            sword.GetComponent<Renderer>().material.color = new Color(0.75f, 0.75f, 0.8f);
-            Object.Destroy(sword.GetComponent<Collider>());
-        }
-
-        // Head
-        var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        head.transform.SetParent(go.transform);
-        head.transform.localPosition = new Vector3(0f, 1.08f, 0f);
-        head.transform.localScale    = new Vector3(0.22f, 0.22f, 0.22f);
-        // Monk: hooded darker skin tone
-        head.GetComponent<Renderer>().material.color = isAI
-            ? new Color(0.55f, 0.12f, 0.12f)
-            : (data.Type == UnitType.Monk ? new Color(0.60f, 0.50f, 0.38f) : new Color(0.85f, 0.72f, 0.55f));
-        Object.Destroy(head.GetComponent<Collider>());
-        } // end humanoid block
-
-        FinishUnit:
-        // Selection ring (player only)
+        // Selection ring (player only) — flat quad glow
         GameObject selRing = null;
         if (!isAI)
         {
-            selRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            selRing = GameObject.CreatePrimitive(PrimitiveType.Quad);
             selRing.name = "SelectRing";
             selRing.transform.SetParent(go.transform);
-            selRing.transform.localPosition = new Vector3(0f, 0.02f, 0f);
-            selRing.transform.localScale    = new Vector3(0.9f, 0.03f, 0.9f);
-            selRing.GetComponent<Renderer>().material.color = new Color(0.2f, 0.9f, 1f);
+            selRing.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+            selRing.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            selRing.transform.localScale    = new Vector3(spriteSize * 1.3f, spriteSize * 1.3f, 1f);
+            selRing.GetComponent<Renderer>().material.color = new Color(0.2f, 0.9f, 1f, 0.5f);
             Object.Destroy(selRing.GetComponent<Collider>());
             selRing.SetActive(false);
         }
 
-        // Root collider (for raycasting)
-        var col = go.AddComponent<CapsuleCollider>();
-        col.center = new Vector3(0f, 0.55f, 0f);
-        col.height = 1.1f;
-        col.radius = 0.3f;
+        // Root collider (flat box for top-down raycasting)
+        var col = go.AddComponent<BoxCollider>();
+        col.center = new Vector3(0f, 0.1f, 0f);
+        col.size   = new Vector3(spriteSize, 0.2f, spriteSize);
 
-        // Health bar
+        // Health bar — flat sprite quads
         var hbGO = new GameObject("HealthBar");
         hbGO.transform.SetParent(go.transform);
-        hbGO.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+        hbGO.transform.localPosition = Vector3.zero;
 
-        var hbBg = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        hbBg.transform.SetParent(hbGO.transform);
-        hbBg.transform.localPosition = Vector3.zero;
-        hbBg.transform.localScale    = new Vector3(1.05f, 0.08f, 0.04f);
-        hbBg.GetComponent<Renderer>().material.color = Color.black;
-        Object.Destroy(hbBg.GetComponent<Collider>());
+        float barW = spriteSize * 0.85f;
+        float barH = 0.18f;
+        float barY = 0.12f;
 
-        var hbFill = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        hbFill.transform.SetParent(hbGO.transform);
-        hbFill.transform.localPosition = new Vector3(0f, 0f, -0.01f);
-        hbFill.transform.localScale    = new Vector3(1.0f, 0.08f, 0.04f);
-        hbFill.GetComponent<Renderer>().material.color = Color.green;
-        Object.Destroy(hbFill.GetComponent<Collider>());
+        var bgTex = new Texture2D(1, 1); bgTex.SetPixel(0,0,new Color(0.1f,0.1f,0.1f,0.9f)); bgTex.Apply();
+        var fillTex = new Texture2D(1, 1); fillTex.SetPixel(0,0,Color.green); fillTex.Apply();
+
+        var hbBg   = SpriteQuad.Create(bgTex,   barW,       barH,            barY,          hbGO.transform);
+        var hbFill = SpriteQuad.Create(fillTex, barW-0.04f, barH * 0.6f, barY + 0.001f, hbGO.transform);
+        hbBg.name   = "HPBarBG";
+        hbFill.name = "HPBarFill";
 
         // Assemble component
         var unit = go.AddComponent<MilitaryUnit>();
@@ -669,12 +811,183 @@ public class MilitaryUnit : MonoBehaviour
         return unit;
     }
 
+    // ── Ironbreaker geometry ──────────────────────────────────────────────────
+
+    static void BuildIronbreakerMesh(GameObject go, UnitData data, bool isAI)
+    {
+        Color armor = isAI ? new Color(0.55f, 0.12f, 0.12f) : data.UnitColor;
+        Color iron  = new Color(0.42f, 0.42f, 0.50f);
+
+        // Heavy oversized body
+        var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(go.transform);
+        body.transform.localPosition = new Vector3(0f, 0.65f, 0f);
+        body.transform.localScale    = new Vector3(0.52f, 0.52f, 0.52f);
+        body.GetComponent<Renderer>().material.color = armor;
+        Object.Destroy(body.GetComponent<Collider>());
+
+        // Broad shoulders (pauldrons)
+        for (int side = -1; side <= 1; side += 2)
+        {
+            var shoulder = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            shoulder.transform.SetParent(go.transform);
+            shoulder.transform.localPosition = new Vector3(side * 0.42f, 0.95f, 0f);
+            shoulder.transform.localScale    = new Vector3(0.28f, 0.22f, 0.28f);
+            shoulder.GetComponent<Renderer>().material.color = iron;
+            Object.Destroy(shoulder.GetComponent<Collider>());
+        }
+
+        // Head — war helm
+        var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        head.transform.SetParent(go.transform);
+        head.transform.localPosition = new Vector3(0f, 1.32f, 0f);
+        head.transform.localScale    = new Vector3(0.30f, 0.26f, 0.30f);
+        head.GetComponent<Renderer>().material.color = iron;
+        Object.Destroy(head.GetComponent<Collider>());
+
+        // Warhammer
+        var handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        handle.transform.SetParent(go.transform);
+        handle.transform.localPosition = new Vector3(0.38f, 0.7f, 0.1f);
+        handle.transform.localRotation = Quaternion.Euler(0f, 0f, 10f);
+        handle.transform.localScale    = new Vector3(0.07f, 0.45f, 0.07f);
+        handle.GetComponent<Renderer>().material.color = new Color(0.38f, 0.22f, 0.08f);
+        Object.Destroy(handle.GetComponent<Collider>());
+
+        var hammerHead = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        hammerHead.transform.SetParent(go.transform);
+        hammerHead.transform.localPosition = new Vector3(0.38f, 1.18f, 0.1f);
+        hammerHead.transform.localScale    = new Vector3(0.20f, 0.14f, 0.16f);
+        hammerHead.GetComponent<Renderer>().material.color = iron;
+        Object.Destroy(hammerHead.GetComponent<Collider>());
+    }
+
+    // ── Warchief geometry ─────────────────────────────────────────────────────
+
+    static void BuildWarchiefMesh(GameObject go, UnitData data, bool isAI)
+    {
+        Color skin  = isAI ? new Color(0.55f, 0.12f, 0.12f) : data.UnitColor;
+        Color bone  = new Color(0.88f, 0.86f, 0.72f);
+        Color dark  = new Color(0.25f, 0.18f, 0.10f);
+
+        // Body
+        var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(go.transform);
+        body.transform.localPosition = new Vector3(0f, 0.60f, 0f);
+        body.transform.localScale    = new Vector3(0.44f, 0.46f, 0.44f);
+        body.GetComponent<Renderer>().material.color = skin;
+        Object.Destroy(body.GetComponent<Collider>());
+
+        // Head with horned helmet
+        var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        head.transform.SetParent(go.transform);
+        head.transform.localPosition = new Vector3(0f, 1.22f, 0f);
+        head.transform.localScale    = new Vector3(0.26f, 0.26f, 0.26f);
+        head.GetComponent<Renderer>().material.color = isAI ? new Color(0.55f, 0.12f, 0.12f) : new Color(0.42f, 0.58f, 0.22f);
+        Object.Destroy(head.GetComponent<Collider>());
+
+        // Horns
+        for (int side = -1; side <= 1; side += 2)
+        {
+            var horn = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            horn.transform.SetParent(go.transform);
+            horn.transform.localPosition = new Vector3(side * 0.16f, 1.40f, 0f);
+            horn.transform.localRotation = Quaternion.Euler(0f, 0f, side * 30f);
+            horn.transform.localScale    = new Vector3(0.05f, 0.22f, 0.05f);
+            horn.GetComponent<Renderer>().material.color = bone;
+            Object.Destroy(horn.GetComponent<Collider>());
+        }
+
+        // War axe
+        var haft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        haft.transform.SetParent(go.transform);
+        haft.transform.localPosition = new Vector3(0.32f, 0.65f, 0.1f);
+        haft.transform.localRotation = Quaternion.Euler(0f, 0f, 5f);
+        haft.transform.localScale    = new Vector3(0.06f, 0.52f, 0.06f);
+        haft.GetComponent<Renderer>().material.color = dark;
+        Object.Destroy(haft.GetComponent<Collider>());
+
+        var blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        blade.transform.SetParent(go.transform);
+        blade.transform.localPosition = new Vector3(0.32f, 1.20f, 0.08f);
+        blade.transform.localRotation = Quaternion.Euler(0f, 0f, 40f);
+        blade.transform.localScale    = new Vector3(0.24f, 0.12f, 0.06f);
+        blade.GetComponent<Renderer>().material.color = new Color(0.62f, 0.62f, 0.68f);
+        Object.Destroy(blade.GetComponent<Collider>());
+    }
+
     // ── Siege engine geometry ─────────────────────────────────────────────────
 
     static void BuildSiegeMesh(GameObject go, UnitData data, bool isAI)
     {
         Color wood  = new Color(0.45f, 0.30f, 0.14f);
         Color iron  = new Color(0.42f, 0.42f, 0.46f);
+
+        if (data.Type == UnitType.Trebuchet)
+        {
+            // Heavy wheeled trebuchet frame
+            var frame = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            frame.transform.SetParent(go.transform);
+            frame.transform.localPosition = new Vector3(0f, 0.30f, 0f);
+            frame.transform.localScale    = new Vector3(1.1f, 0.55f, 1.6f);
+            frame.GetComponent<Renderer>().material.color = wood;
+            Object.Destroy(frame.GetComponent<Collider>());
+
+            // Support legs (A-frame sides)
+            for (int side = -1; side <= 1; side += 2)
+            {
+                var leg = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                leg.transform.SetParent(go.transform);
+                leg.transform.localPosition = new Vector3(side * 0.42f, 0.60f, 0f);
+                leg.transform.localRotation = Quaternion.Euler(0f, 0f, side * 15f);
+                leg.transform.localScale    = new Vector3(0.10f, 0.85f, 0.20f);
+                leg.GetComponent<Renderer>().material.color = wood * 0.9f;
+                Object.Destroy(leg.GetComponent<Collider>());
+            }
+
+            // Long throwing arm (raised, ready to fire)
+            var arm = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            arm.transform.SetParent(go.transform);
+            arm.transform.localPosition = new Vector3(0f, 1.05f, -0.20f);
+            arm.transform.localRotation = Quaternion.Euler(25f, 0f, 0f);
+            arm.transform.localScale    = new Vector3(0.10f, 0.80f, 0.10f);
+            arm.GetComponent<Renderer>().material.color = isAI ? new Color(0.6f, 0.2f, 0.2f) : wood * 1.1f;
+            Object.Destroy(arm.GetComponent<Collider>());
+
+            // Counterweight (heavy iron box at base of arm)
+            var cw = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cw.transform.SetParent(go.transform);
+            cw.transform.localPosition = new Vector3(0f, 0.80f, 0.42f);
+            cw.transform.localScale    = new Vector3(0.38f, 0.38f, 0.38f);
+            cw.GetComponent<Renderer>().material.color = iron;
+            Object.Destroy(cw.GetComponent<Collider>());
+
+            // Sling cup (tip of arm)
+            var cup = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            cup.transform.SetParent(go.transform);
+            cup.transform.localPosition = new Vector3(0f, 1.85f, -0.65f);
+            cup.transform.localScale    = new Vector3(0.22f, 0.22f, 0.22f);
+            cup.GetComponent<Renderer>().material.color = iron;
+            Object.Destroy(cup.GetComponent<Collider>());
+
+            // Wheels (4, larger than mangonel)
+            float[] wx3 = { -0.48f, 0.48f };
+            float[] wz3 = { -0.65f, 0.65f };
+            foreach (float x in wx3)
+                foreach (float z in wz3)
+                {
+                    var wheel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    wheel.transform.SetParent(go.transform);
+                    wheel.transform.localPosition = new Vector3(x, 0.18f, z);
+                    wheel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                    wheel.transform.localScale    = new Vector3(0.26f, 0.09f, 0.26f);
+                    wheel.GetComponent<Renderer>().material.color = wood * 0.8f;
+                    Object.Destroy(wheel.GetComponent<Collider>());
+                }
+            return; // skip Mangonel/Ram block
+        }
 
         if (data.Type == UnitType.BatteringRam)
         {

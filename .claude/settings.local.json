@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:realmforge-game-6dfx0yxy9-dpineyro13-4046s-projects.vercel.app)",
+      "Bash(vercel --version)",
+      "Bash(/Applications/Unity/Unity-6000.4.3f1/Unity.app/Contents/MacOS/Unity -batchmode -quit -projectPath /Users/danilopineyro/Desktop/RealmForge -executeMethod WebGLBuilder.Build -logFile /tmp/unity_build.log -buildTarget WebGL)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(/Applications/Unity/Unity-6000.4.3f1/Unity.app/Contents/MacOS/Unity -batchmode -quit -nographics -projectPath /Users/danilopineyro/Desktop/RealmForge -executeMethod WebGLBuilder.Build -logFile /tmp/unity_build2.log -buildTarget WebGL)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(osascript -e 'tell application \"Unity\" to quit saving yes')",
+      "Bash(pkill -TERM -x Unity)",
+      "Bash(/Applications/Unity/Unity-6000.4.3f1/Unity.app/Contents/MacOS/Unity -batchmode -quit -projectPath /Users/danilopineyro/Desktop/RealmForge -executeMethod WebGLBuilder.Build -logFile /tmp/unity_build3.log -buildTarget WebGL)",
+      "Bash(/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/MacOS/Unity -batchmode -quit -projectPath /Users/danilopineyro/Desktop/RealmForge -executeMethod WebGLBuilder.Build -logFile /tmp/unity_build4.log -buildTarget WebGL)",
+      "Bash(rsync -a --delete /Users/danilopineyro/Desktop/RealmForge/WebBuild/Build/TemplateData/ /Users/danilopineyro/Desktop/RealmForge/WebBuild/TemplateData/)",
+      "Bash(vercel --prod --yes)",
+      "WebFetch(domain:realmforge-game-mn1v093uv-dpineyro13-4046s-projects.vercel.app)",
+      "WebFetch(domain:realmforge-game.vercel.app)",
+      "Bash(curl -sI https://realmforge-game.vercel.app)",
+      "Bash(curl -sI https://realmforge-game.vercel.app/Build/Build.loader.js)",
+      "Bash(curl -sI https://realmforge-game.vercel.app/Build/Build.wasm.gz)",
+      "Bash(curl -sI https://realmforge-game.vercel.app/Build/Build.framework.js.gz)",
+      "Bash(curl -sI https://realmforge-game.vercel.app/Build/Build.data.gz)",
+      "Bash(/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/MacOS/Unity -batchmode -quit -projectPath /Users/danilopineyro/Desktop/RealmForge -executeMethod WebGLBuilder.Build -logFile /tmp/unity_build5.log -buildTarget WebGL)",
+      "Bash(npx vercel:*)",
+      "Bash(rm -f .git/index.lock)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(bash build_and_deploy.sh)"
+    ]
+  }
+}

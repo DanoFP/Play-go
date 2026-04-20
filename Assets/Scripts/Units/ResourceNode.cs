@@ -49,35 +49,14 @@ public class ResourceNode : MonoBehaviour
         var go = new GameObject(type + "Node");
         go.transform.position = pos;
 
-        var mesh = GameObject.CreatePrimitive(
-            type == NodeType.Wood  ? PrimitiveType.Cylinder :
-            type == NodeType.Gold  ? PrimitiveType.Sphere   : PrimitiveType.Cube);
-        mesh.transform.SetParent(go.transform);
-        Destroy(mesh.GetComponent<Collider>());
-
-        switch (type)
-        {
-            case NodeType.Wood:
-                mesh.transform.localScale    = new Vector3(0.4f, 1.0f, 0.4f);
-                mesh.transform.localPosition = new Vector3(0, 0.5f, 0);
-                mesh.GetComponent<Renderer>().material.color = new Color(0.45f, 0.28f, 0.10f);
-                break;
-            case NodeType.Stone:
-                mesh.transform.localScale    = new Vector3(1.1f, 0.8f, 1.1f);
-                mesh.transform.localPosition = new Vector3(0, 0.4f, 0);
-                mesh.GetComponent<Renderer>().material.color = new Color(0.62f, 0.62f, 0.67f);
-                break;
-            case NodeType.Gold:
-                mesh.transform.localScale    = new Vector3(0.7f, 0.5f, 0.7f);
-                mesh.transform.localPosition = new Vector3(0, 0.25f, 0);
-                mesh.GetComponent<Renderer>().material.color = new Color(1.0f, 0.85f, 0.1f);
-                break;
-        }
+        // Pixel-art sprite
+        float size = type == NodeType.Wood ? 1.6f : 1.4f;
+        SpriteQuad.Create(PixelArtSprites.ResourceSprite(type), size, size, 0.06f, go.transform);
 
         // Trigger collider so villagers can detect proximity
         var col = go.AddComponent<SphereCollider>();
         col.radius = 1.2f;
-        col.center = new Vector3(0, 0.5f, 0);
+        col.center = new Vector3(0, 0.1f, 0);
         col.isTrigger = true;
 
         var node = go.AddComponent<ResourceNode>();

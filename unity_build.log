@@ -1,0 +1,697 @@
+Unity Editor version:    6000.4.3f1 (39d1a88d4dd1)
+Branch:                  6000.4/staging
+Build type:              Release
+Batch mode:              YES
+macOS version:           Version 15.7.5 (Build 24G624)
+Darwin version:          24.6.0
+Architecture:            x86_64
+Running under Rosetta:   NO
+Available memory:        16384 MB
+Date:                    2026-04-20T01:13:47Z
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-danilopineyro" at "2026-04-20T01:13:47.487151Z"
+Launching external process: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Helpers/PackageManager/Server/UnityPackageManager
+
+COMMAND LINE ARGUMENTS:
+/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/MacOS/Unity
+-batchmode
+-quit
+-projectPath
+/Users/danilopineyro/Desktop/RealmForge
+-buildTarget
+WebGL
+-executeMethod
+BuildScript.BuildWebGL
+-logFile
+/Users/danilopineyro/Desktop/RealmForge/unity_build.log
+Successfully changed project path to: /Users/danilopineyro/Desktop/RealmForge
+/Users/danilopineyro/Desktop/RealmForge
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-gfx=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+Player connection [140704507547904]  Target information:
+
+Player connection [140704507547904]  * "[IP] 192.168.1.40 [Port] 55504 [Flags] 2 [Guid] 2162330788 [EditorId] 2162330788 [Version] 1048832 [Id] OSXEditor(0,192.168.1.40) [Debug] 1 [PackageName] OSXEditor [ProjectName] Editor" 
+
+Player connection [140704507547904] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [140704507547904] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Package Manager] Connected to IPC stream "Upm-55320" after 0.2 seconds.
+[Licensing::Module] Licensing is not yet initialized.
+[Licensing::Client] Error: HandshakeResponse reported an error:
+	ResponseCode: 505
+	ResponseStatus: Unsupported protocol version '1.18.1'.
+[Licensing::Module] Error: Failed to handshake to channel: "LicenseClient-danilopineyro"
+[Licensing::IpcConnector] LicenseClient-danilopineyro channel disconnected successfully.
+[Licensing::IpcConnector] Channel LicenseClient-danilopineyro-6000.4.3 doesn't exist
+Launching external process: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Helpers/UnityLicensingClient.app/Contents/MacOS/Unity.Licensing.Client
+[Licensing::Module] Successfully launched the LicensingClient (PId: 55330)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-danilopineyro-6000.4.3" at "2026-04-20T01:13:48.621062Z"
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.18.1+9fbee8e
+  Session Id:              071280d4e46e414fa6d458bdee8be018
+  Correlation Id:          54b95b27ae04ebc8b584e9141795a13e
+  External correlation Id: 5314201948519757295
+  Machine Id:              lOYMX7ml2mXFDFAc9LNQ/zNUAZU=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-danilopineyro-6000.4.3" (connect: 0.38s, validation: 0.04s, handshake: 0.60s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-danilopineyro-6000.4.3-notifications" at "2026-04-20T01:13:49.26Z"
+[Licensing::Module] Connected to LicensingClient (PId: 55330, launch time: 0.00, total connection time: 1.02s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 4673117189100-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.01
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] Licensing Background thread has ended after 1.80s
+[Licensing::Module] Licensing is initialized (took 1.27s).
+[Licensing::Client] Successfully resolved entitlement details
+Library Redirect Path: Library/
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Targeting platform: WebGL
+Initialize engine version: 6000.4.3f1 (39d1a88d4dd1)
+[Subsystems] Discovering subsystems at path /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path /Users/danilopineyro/Desktop/RealmForge/Assets
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+Color LCD preferred device: Intel(R) Iris(TM) Plus Graphics 645 (low power)
+Metal devices available: 1
+0: Intel(R) Iris(TM) Plus Graphics 645 (low power)
+Using device Intel(R) Iris(TM) Plus Graphics 645 (low power)
+Initializing Metal device caps: Intel(R) Iris(TM) Plus Graphics 645
+Mac GPU Family: 2
+Apple GPU Family: 0
+MSL Version: 3.0
+Has Float MSAA: 1
+Has Float Filtering: 1
+ReadWrite Texture Tier: 1
+Initialize mono
+Mono path[0] = '/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/Scripting/Managed'
+Mono path[1] = '/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/unityjit-macos'
+Mono config path = '/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56320
+CodeReloadManager initialized
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: /Applications/Unity/Hub/Editor/6000.4.3f1/PlaybackEngines/WebGLSupport/UnityEditor.WebGL.Extensions.dll
+Register platform support module: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/PlaybackEngines/MacStandaloneSupport/UnityEditor.OSXStandalone.Extensions.dll
+[Licensing::Client] Successfully resolved entitlement details
+Register platform support module: /Applications/Unity/Hub/Editor/6000.4.3f1/PlaybackEngines/iOSSupport/UnityEditor.iOS.Extensions.dll
+Registered in 0.002548 seconds.
+[usbmuxd] Start listen thread
+[usbmuxd] Listen thread started
+[usbmuxd] Send listen message
+Native extension for iOS target not found
+Native extension for OSXStandalone target not found
+Native extension for WebGL target not found
+Package Manager log level set to [2]
+ScheduleIndexationOnStartup MainProcess:False IndexOnStartup:True
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.669 seconds
+Domain Reload Profiling: 1303ms
+	BeginReloadAssembly (139ms)
+	RebuildCommonClasses (64ms)
+	RebuildNativeTypeToScriptingClass (21ms)
+	initialDomainReloadingComplete (76ms)
+	LoadAllAssembliesAndSetupDomain (334ms)
+		LoadAssemblies (137ms)
+		AnalyzeDomain (320ms)
+			TypeCache.Refresh (317ms)
+				TypeCache.ScanAssembly (297ms)
+	FinalizeReload (670ms)
+		SetupLoadedEditorAssemblies (0ms)
+			InitializePlatformSupportModulesInManaged (145ms)
+			BeforeProcessingInitializeOnLoad (137ms)
+			ProcessInitializeOnLoadAttributes (165ms)
+			ProcessInitializeOnLoadMethodAttributes (120ms)
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+[Package Manager] Restoring resolved packages state from cache
+[Licensing::Client] Successfully resolved entitlement details
+[Package Manager] Registered 39 packages:
+  Built-in packages:
+    com.unity.ugui@2.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.ugui@d8a2716f3013)
+    com.unity.textmeshpro@5.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.textmeshpro@53f43edfd2e0)
+    com.unity.multiplayer.center@1.0.1 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.multiplayer.center@f01f4ba8d00a)
+    com.unity.modules.accessibility@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.accessibility)
+    com.unity.modules.adaptiveperformance@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.adaptiveperformance)
+    com.unity.modules.ai@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.director)
+    com.unity.modules.imageconversion@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.screencapture)
+    com.unity.modules.terrain@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vectorgraphics@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.vectorgraphics)
+    com.unity.modules.vehicles@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.xr)
+    com.unity.modules.subsystems@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.subsystems)
+    com.unity.modules.hierarchycore@1.0.0 (location: /Users/danilopineyro/Desktop/RealmForge/Library/PackageCache/com.unity.modules.hierarchycore)
+[Package Manager] com.unity.textmeshpro is deprecated: This package is no longer supported. TextMeshPro functionalities are now included in the com.unity.ugui package. To continue using them, consider adding it to your project dependencies.
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.01 seconds
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://unix:/tmp/ilpp.sock-a078d8184a92c11e33a5b44bdc864ad0
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /Users/danilopineyro/Desktop/RealmForge
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - 200 - application/grpc 43.8036ms
+Starting: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/BuildPipeline/bee_backend --ipc --defer-dag-verification --dagfile="Library/Bee/2000b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: /Users/danilopineyro/Desktop/RealmForge
+DisplayProgressbar: Compiling Scripts
+ExitCode: 0 Duration: 0s111ms
+*** Tundra build success (0.08 seconds), 0 items updated, 237 evaluated
+Total cache size 15446311
+AssetDatabase: script compilation time: 0.819547s
+Total cache size after purge 15446311, took 00:00:00.0196213
+Begin MonoManager ReloadAssembly
+Assembly Assembly-CSharp-Editor-firstpass.dll at Library/ScriptAssemblies/Assembly-CSharp-Editor-firstpass.dll not valid. Loading of assembly skipped.
+Assembly Assembly-CSharp-firstpass.dll at Library/ScriptAssemblies/Assembly-CSharp-firstpass.dll not valid. Loading of assembly skipped.
+Assembly Unity.Multiplayer.Center.Editor.Tests.dll at Library/ScriptAssemblies/Unity.Multiplayer.Center.Editor.Tests.dll not valid. Loading of assembly skipped.
+Assembly Unity.Multiplayer.Center.Tests.dll at Library/ScriptAssemblies/Unity.Multiplayer.Center.Tests.dll not valid. Loading of assembly skipped.
+Assembly Unity.TextMeshPro.Editor.Tests.dll at Library/ScriptAssemblies/Unity.TextMeshPro.Editor.Tests.dll not valid. Loading of assembly skipped.
+Assembly Unity.TextMeshPro.Tests.dll at Library/ScriptAssemblies/Unity.TextMeshPro.Tests.dll not valid. Loading of assembly skipped.
+Assembly UnityEditor.UI.Common.Tests.dll at Library/ScriptAssemblies/UnityEditor.UI.Common.Tests.dll not valid. Loading of assembly skipped.
+Assembly UnityEditor.UI.EditorTests.dll at Library/ScriptAssemblies/UnityEditor.UI.EditorTests.dll not valid. Loading of assembly skipped.
+Assembly UnityEngine.UI.Tests.dll at Library/ScriptAssemblies/UnityEngine.UI.Tests.dll not valid. Loading of assembly skipped.
+Native extension for iOS target not found
+Native extension for OSXStandalone target not found
+Native extension for WebGL target not found
+ScheduleIndexationOnStartup MainProcess:True IndexOnStartup:True
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.738 seconds
+Domain Reload Profiling: 1177ms
+	BeginReloadAssembly (266ms)
+		DisableScriptedObjects (25ms)
+		CreateAndSetChildDomain (84ms)
+	RebuildCommonClasses (61ms)
+	RebuildNativeTypeToScriptingClass (18ms)
+	initialDomainReloadingComplete (41ms)
+	LoadAllAssembliesAndSetupDomain (52ms)
+		LoadAssemblies (120ms)
+		AnalyzeDomain (33ms)
+			TypeCache.Refresh (21ms)
+				TypeCache.ScanAssembly (13ms)
+			BuildScriptInfoCaches (6ms)
+			ResolveRequiredComponents (4ms)
+	FinalizeReload (739ms)
+		SetupLoadedEditorAssemblies (0ms)
+			InitializePlatformSupportModulesInManaged (50ms)
+			BeforeProcessingInitializeOnLoad (173ms)
+			ProcessInitializeOnLoadAttributes (123ms)
+			ProcessInitializeOnLoadMethodAttributes (68ms)
+		AwakeInstancesAfterBackupRestoration (28ms)
+(Values over 0.050ms)
+Asset Pipeline Refresh (id=588e95232bf9940f585d0f04b6f56e49): Total: 2.265 seconds - Initiated by InitialRefreshV2(ForceSynchronousImport)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=934 ms
+		Asset DB Callback time: managed=45 ms, native=15 ms
+		Scripting: domain reloads=1, domain reload time=439 ms, compile time=823 ms, other=5 ms
+		Project Asset Count: scripts=210, non-scripts=127
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 1
+	InvokePackagesCallback: 16.732ms
+	ApplyChangesToAssetFolders: 0.326ms
+	Scan: 108.534ms
+	CategorizeScriptCompilationAssets: 1.471ms
+	ProcessAssetsWithTransientArtifactChanges: 11.266ms
+	CategorizeAssets: 2.449ms
+	CompileScripts: 822.912ms
+	ImportOutOfDateAssets: 740.201ms (739.319ms without children)
+		UnloadImportedAssets: 0.471ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.118ms
+		OnDemandSchedulerStart: 0.291ms
+	PostProcessAllAssets: 45.722ms
+		MonoPostProcessAllAssets: 45.638ms
+			WindowAssetPostprocessingWatcher.OnPostprocessAllAssets 18.671ms
+			SyncVS.PostprocessSyncProject 3.752ms
+			SpeedTree9Postprocessor.OnPostprocessAllAssets 1.576ms
+			ReferencedClipsPostProcessor.OnPostprocessAllAssets 0.526ms
+			TerrainToolbarOverlayPostProcessor.OnPostprocessAllAssets 0.423ms
+			AssetDatabaseCallbacks.OnPostprocessAllAssets 0.265ms
+			RenderPipelineGlobalSettingsPostprocessor.OnPostprocessAllAssets 0.165ms
+	UnloadStreamsBegin: 1.604ms
+	GenerateScriptTypeHashes: 0.404ms
+	GenerateScriptTypeSerializationHashes: 0.937ms
+	Untracked: 510.238ms
+
+Application.AssetDatabase Initial Refresh End
+Launching external process: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Helpers/UnityShaderCompiler
+Launched and connected shader compiler UnityShaderCompiler after 0.08 seconds
+Scanning for USB devices : 0.794ms
+Initializing Unity extensions:
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-RealmForge
+2026-04-19 22:13:53.488 Unity[55320:10164120] NSEventModifierFlagFunction specified to -setKeyEquivalentModifierMask: for item <NSMenuItem: 0x7faba17d6d80 SDF, ke='Command-F12'>, but is only supported for system-provided menu items; will not be used
+Unloading 3 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 459 unused Assets / (0.5 MB). Loaded Objects now: 1101.
+Memory consumption went from 103.8 MB to 103.3 MB.
+Total: 7.418728 ms (FindLiveObjects: 0.099852 ms CreateObjectMapping: 0.044144 ms MarkObjects: 6.742428 ms  DeleteObjects: 0.526589 ms)
+
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - 200 - application/grpc 3.0727ms
+Starting: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/BuildPipeline/bee_backend --ipc --defer-dag-verification --dagfile="Library/Bee/2000b0aESkipCompile.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssembliesAndTypeDB
+WorkingDir: /Users/danilopineyro/Desktop/RealmForge
+ExitCode: 0 Duration: 0s120ms
+*** Tundra build success (0.09 seconds), 0 items updated, 3 evaluated
+Total cache size 15446311
+Total cache size after purge 15446311, took 00:00:00.0177291
+Asset Pipeline Refresh (id=a1cd7638397584f25812db3f25052bea): Total: 0.021 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+[ScriptCompilation] Requested script compilation because: Recompiling scripts for player build.
+BuildPlayer: start building target 20
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - 200 - application/grpc 0.7509ms
+Starting: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/BuildPipeline/bee_backend --ipc --defer-dag-verification --dagfile="Library/Bee/2000b0aP.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssembliesAndTypeDB
+WorkingDir: /Users/danilopineyro/Desktop/RealmForge
+ExitCode: 0 Duration: 0s62ms
+[106/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/UnityEngine.UI.dll
+[108/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Unity.InternalAPIEngineBridge.004.pdb
+[109/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Unity.InternalAPIEngineBridge.004.dll
+[110/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/UnityEngine.UI.pdb
+[111/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Unity.Multiplayer.Center.Common.pdb
+[112/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Unity.Multiplayer.Center.Common.dll
+[116/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Unity.TextMeshPro.dll
+[117/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Unity.TextMeshPro.pdb
+[119/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Assembly-CSharp.dll
+[120/123    0s] CopyFiles Library/Bee/PlayerScriptAssemblies/Assembly-CSharp.pdb
+*** Tundra build success (0.03 seconds), 10 items updated, 123 evaluated
+Total cache size 15446311
+Total cache size after purge 15446311, took 00:00:00.0101631
+Not rebuilding Data files -- no changes
+2026-04-19 22:13:54.458 Unity[55320:10164120] NSEventModifierFlagFunction specified to -setKeyEquivalentModifierMask: for item <NSMenuItem: 0x7faba4a7d550 SDF, ke='Command-F12'>, but is only supported for system-provided menu items; will not be used
+
+
+Mono dependencies included in the build
+Dependency assembly - System.Globalization.Extensions.dll
+Dependency assembly - System.Text.Encoding.Extensions.dll
+Dependency assembly - System.Threading.Timer.dll
+Dependency assembly - System.Data.DataSetExtensions.dll
+Dependency assembly - System.Dynamic.Runtime.dll
+Dependency assembly - System.Threading.Tasks.Extensions.dll
+Dependency assembly - System.IO.IsolatedStorage.dll
+Dependency assembly - System.Xml.Linq.dll
+Dependency assembly - Unity.InternalAPIEngineBridge.004.dll
+Dependency assembly - System.Diagnostics.Tools.dll
+Dependency assembly - System.Resources.ResourceManager.dll
+Dependency assembly - System.Security.Cryptography.Encryption.dll
+Dependency assembly - System.ValueTuple.dll
+Dependency assembly - System.ServiceModel.Duplex.dll
+Dependency assembly - System.Runtime.Remoting.dll
+Dependency assembly - System.Web.ApplicationServices.dll
+Dependency assembly - System.Net.dll
+Dependency assembly - System.ServiceModel.NetTcp.dll
+Dependency assembly - System.Net.Primitives.dll
+Dependency assembly - System.ComponentModel.DataAnnotations.dll
+Dependency assembly - System.Collections.dll
+Dependency assembly - System.Security.Cryptography.Algorithms.dll
+Dependency assembly - System.Threading.Tasks.Parallel.dll
+Dependency assembly - System.Xml.Serialization.dll
+Dependency assembly - System.Web.DynamicData.dll
+Dependency assembly - System.Xml.XPath.dll
+Dependency assembly - System.Web.Services.dll
+Dependency assembly - System.Net.NameResolution.dll
+Dependency assembly - System.Xml.XPath.XmlDocument.dll
+Dependency assembly - System.ComponentModel.EventBasedAsync.dll
+Dependency assembly - System.Transactions.dll
+Dependency assembly - Mono.Data.Sqlite.dll
+Dependency assembly - System.EnterpriseServices.dll
+Dependency assembly - System.Diagnostics.FileVersionInfo.dll
+Dependency assembly - System.Net.Utilities.dll
+Dependency assembly - System.Memory.dll
+Dependency assembly - System.Net.AuthenticationManager.dll
+Dependency assembly - netstandard.dll
+Dependency assembly - System.Messaging.dll
+Dependency assembly - System.Web.Extensions.Design.dll
+Dependency assembly - Assembly-CSharp.dll
+Dependency assembly - System.Numerics.dll
+Dependency assembly - System.Security.Cryptography.Hashing.dll
+Dependency assembly - System.ServiceModel.Web.dll
+Dependency assembly - System.IO.Compression.ZipFile.dll
+Dependency assembly - I18N.dll
+Dependency assembly - System.DirectoryServices.dll
+Dependency assembly - System.Reflection.Primitives.dll
+Dependency assembly - System.Runtime.Loader.dll
+Dependency assembly - System.Net.Http.dll
+Dependency assembly - System.Web.RegularExpressions.dll
+Dependency assembly - System.Reflection.Extensions.dll
+Dependency assembly - System.Globalization.Calendars.dll
+Dependency assembly - System.ComponentModel.TypeConverter.dll
+Dependency assembly - System.Security.Cryptography.Pkcs.dll
+Dependency assembly - System.Management.dll
+Dependency assembly - System.Diagnostics.Debug.dll
+Dependency assembly - System.Xml.XDocument.dll
+Dependency assembly - System.Drawing.Primitives.dll
+Dependency assembly - System.Net.Sockets.dll
+Dependency assembly - System.Threading.Thread.dll
+Dependency assembly - System.Drawing.dll
+Dependency assembly - System.Security.Principal.Windows.dll
+Dependency assembly - System.IO.Compression.FileSystem.dll
+Dependency assembly - System.ServiceModel.Security.dll
+Dependency assembly - System.Net.Requests.dll
+Dependency assembly - System.Runtime.Numerics.dll
+Dependency assembly - System.Security.Cryptography.X509Certificates.dll
+Dependency assembly - System.IdentityModel.Selectors.dll
+Dependency assembly - System.Net.Security.dll
+Dependency assembly - I18N.Other.dll
+Dependency assembly - System.ServiceProcess.ServiceController.dll
+Dependency assembly - mscorlib.dll
+Dependency assembly - System.Runtime.Serialization.Json.dll
+Dependency assembly - System.Data.Linq.dll
+Dependency assembly - System.Diagnostics.Process.dll
+Dependency assembly - System.Runtime.Serialization.Formatters.dll
+Dependency assembly - System.Security.Cryptography.DeriveBytes.dll
+Dependency assembly - System.DirectoryServices.Protocols.dll
+Dependency assembly - System.Text.RegularExpressions.dll
+Dependency assembly - System.Net.Cache.dll
+Dependency assembly - I18N.CJK.dll
+Dependency assembly - System.Resources.ReaderWriter.dll
+Dependency assembly - System.Security.AccessControl.dll
+Dependency assembly - System.Core.dll
+Dependency assembly - System.Threading.AccessControl.dll
+Dependency assembly - System.Linq.Queryable.dll
+Dependency assembly - System.Runtime.Serialization.Formatters.Soap.dll
+Dependency assembly - System.ServiceModel.Internals.dll
+Dependency assembly - System.Web.dll
+Dependency assembly - System.Security.Cryptography.Encoding.dll
+Dependency assembly - System.Xml.XmlDocument.dll
+Dependency assembly - System.Diagnostics.Tracing.dll
+Dependency assembly - Accessibility.dll
+Dependency assembly - System.Security.Cryptography.Csp.dll
+Dependency assembly - System.IO.FileSystem.Primitives.dll
+Dependency assembly - System.Data.Services.dll
+Dependency assembly - System.Runtime.InteropServices.RuntimeInformation.dll
+Dependency assembly - System.IO.FileSystem.DriveInfo.dll
+Dependency assembly - System.Diagnostics.StackTrace.dll
+Dependency assembly - System.IdentityModel.dll
+Dependency assembly - System.Threading.Overlapped.dll
+Dependency assembly - System.Linq.dll
+Dependency assembly - System.Runtime.dll
+Dependency assembly - System.Threading.Tasks.dll
+Dependency assembly - System.ServiceModel.Discovery.dll
+Dependency assembly - System.Runtime.DurableInstancing.dll
+Dependency assembly - System.Threading.dll
+Dependency assembly - System.Reflection.DispatchProxy.dll
+Dependency assembly - I18N.Rare.dll
+Dependency assembly - System.Data.Entity.dll
+Dependency assembly - System.AppContext.dll
+Dependency assembly - Mono.Security.dll
+Dependency assembly - System.Drawing.Design.dll
+Dependency assembly - System.ObjectModel.dll
+Dependency assembly - System.IO.dll
+Dependency assembly - System.Collections.Specialized.dll
+Dependency assembly - System.Xml.ReaderWriter.dll
+Dependency assembly - System.ServiceModel.Routing.dll
+Dependency assembly - System.Runtime.Caching.dll
+Dependency assembly - System.Net.WebHeaderCollection.dll
+Dependency assembly - System.Security.SecureString.dll
+Dependency assembly - Microsoft.CSharp.dll
+Dependency assembly - I18N.MidEast.dll
+Dependency assembly - System.Globalization.dll
+Dependency assembly - System.Security.Principal.dll
+Dependency assembly - Microsoft.Win32.Registry.AccessControl.dll
+Dependency assembly - System.Security.Cryptography.Hashing.Algorithms.dll
+Dependency assembly - System.dll
+Dependency assembly - System.IO.FileSystem.Watcher.dll
+Dependency assembly - System.Security.Cryptography.Cng.dll
+Dependency assembly - System.IO.Compression.dll
+Dependency assembly - System.Resources.Writer.dll
+Dependency assembly - Unity.Multiplayer.Center.Common.dll
+Dependency assembly - System.Net.Ping.dll
+Dependency assembly - System.Reflection.Context.dll
+Dependency assembly - System.Xml.Xsl.Primitives.dll
+Dependency assembly - System.Security.dll
+Dependency assembly - System.Runtime.InteropServices.dll
+Dependency assembly - System.Diagnostics.TraceSource.dll
+Dependency assembly - System.Reflection.Emit.ILGeneration.dll
+Dependency assembly - System.Net.HttpListener.dll
+Dependency assembly - UnityEngine.UI.dll
+Dependency assembly - System.Runtime.Handles.dll
+Dependency assembly - System.Collections.NonGeneric.dll
+Dependency assembly - System.Xml.XmlSerializer.dll
+Dependency assembly - System.Data.OracleClient.dll
+Dependency assembly - System.Net.WebSockets.dll
+Dependency assembly - System.Runtime.Extensions.dll
+Dependency assembly - System.Runtime.Serialization.Xml.dll
+Dependency assembly - System.Text.Encoding.dll
+Dependency assembly - System.Reflection.Emit.dll
+Dependency assembly - System.Json.dll
+Dependency assembly - System.ComponentModel.Primitives.dll
+Dependency assembly - System.ServiceModel.Http.dll
+Dependency assembly - System.Xml.dll
+Dependency assembly - I18N.West.dll
+Dependency assembly - System.Runtime.InteropServices.WindowsRuntime.dll
+Dependency assembly - System.Configuration.dll
+Dependency assembly - Mono.Data.Tds.dll
+Dependency assembly - System.ServiceModel.Activation.dll
+Dependency assembly - System.Xaml.dll
+Dependency assembly - Unity.TextMeshPro.dll
+Dependency assembly - System.ServiceModel.Primitives.dll
+Dependency assembly - Microsoft.Win32.Primitives.dll
+Dependency assembly - System.Data.SqlClient.dll
+Dependency assembly - System.ComponentModel.dll
+Dependency assembly - System.ServiceModel.dll
+Dependency assembly - Microsoft.Win32.Registry.dll
+Dependency assembly - System.Collections.Concurrent.dll
+Dependency assembly - System.Buffers.dll
+Dependency assembly - System.Xml.XPath.XDocument.dll
+Dependency assembly - System.Data.Common.dll
+Dependency assembly - System.Data.Services.Client.dll
+Dependency assembly - System.Resources.Reader.dll
+Dependency assembly - System.ServiceProcess.dll
+Dependency assembly - System.Windows.Forms.DataVisualization.dll
+Dependency assembly - System.Security.Cryptography.Encryption.ECDiffieHellman.dll
+Dependency assembly - System.Runtime.Serialization.dll
+Dependency assembly - System.Security.Cryptography.ProtectedData.dll
+Dependency assembly - System.Security.Cryptography.RandomNumberGenerator.dll
+Dependency assembly - System.IO.UnmanagedMemoryStream.dll
+Dependency assembly - System.Configuration.Install.dll
+Dependency assembly - System.Reflection.dll
+Dependency assembly - System.Net.Http.WebRequest.dll
+Dependency assembly - System.Windows.dll
+Dependency assembly - System.Numerics.Vectors.dll
+Dependency assembly - System.Net.ServicePoint.dll
+Dependency assembly - System.Diagnostics.Contracts.dll
+Dependency assembly - System.Security.Cryptography.RSA.dll
+Dependency assembly - System.Security.Cryptography.Encryption.Aes.dll
+Dependency assembly - System.ComponentModel.Annotations.dll
+Dependency assembly - System.Net.Mail.dll
+Dependency assembly - System.IO.FileSystem.dll
+Dependency assembly - System.Console.dll
+Dependency assembly - System.Linq.Expressions.dll
+Dependency assembly - System.IO.MemoryMappedFiles.dll
+Dependency assembly - System.Security.Cryptography.Encryption.ECDsa.dll
+Dependency assembly - System.ComponentModel.Composition.dll
+Dependency assembly - System.Data.dll
+Dependency assembly - System.Diagnostics.TraceEvent.dll
+Dependency assembly - System.Linq.Parallel.dll
+Dependency assembly - System.Reflection.Emit.Lightweight.dll
+Dependency assembly - System.Security.Cryptography.OpenSsl.dll
+Dependency assembly - System.Net.NetworkInformation.dll
+Dependency assembly - System.Diagnostics.TextWriterTraceListener.dll
+Dependency assembly - System.Design.dll
+Dependency assembly - System.Net.WebSockets.Client.dll
+Dependency assembly - System.IO.Pipes.dll
+Dependency assembly - System.Security.Cryptography.Primitives.dll
+Dependency assembly - System.Runtime.Serialization.Primitives.dll
+Dependency assembly - System.Text.Encoding.CodePages.dll
+Dependency assembly - System.Reflection.TypeExtensions.dll
+Dependency assembly - System.Runtime.CompilerServices.VisualC.dll
+Dependency assembly - System.IO.FileSystem.AccessControl.dll
+Dependency assembly - System.Windows.Forms.dll
+Dependency assembly - System.Threading.ThreadPool.dll
+Dependency assembly - System.Web.Extensions.dll
+Dependency assembly - System.Security.Claims.dll
+
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - application/grpc -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping - 200 - application/grpc 0.3114ms
+Starting: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/BuildPipeline/bee_backend --ipc --dagfile="Library/Bee/Player94a27274.dag" --profile="Library/Bee/backend1.traceevents" Player
+WorkingDir: /Users/danilopineyro/Desktop/RealmForge
+DisplayProgressbar: Incremental Player Build
+[ 16/279    0s] CopyFiles Temp/EditorBuildOutput/UnityLinkerToEditorData.json
+[           0s] ComputeLeafInputSignature Lib_WebGL_wasm Library/Bee/artifacts/WebGL/il2cpp/release_WebGL_wasm/il2cpp.a [success 3196a01203cdca35edff124acfafbec3]
+[256/279    0s] CopyFiles Temp/EditorBuildOutput/MethodMap.tsv
+[278/279    0s] PreprocessJS WebBuild/index.html
+*** Tundra build success (0.17 seconds), 3 items updated, 279 evaluated
+ExitCode: 0 Duration: 0s190ms
+Total cache size 15446311
+Total cache size after purge 15446311, took 00:00:00.0106806
+[websockify wrapper] Start node and websockify.js
+
+-------------------------------------------------------------------------------
+Build Report
+Information on used Assets is not available, since player data was not rebuilt.
+Do a clean build to view the Asset build report information.
+-------------------------------------------------------------------------------
+Unloading 4 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 23 unused Assets / (0.5 MB). Loaded Objects now: 1119.
+Memory consumption went from 105.3 MB to 104.8 MB.
+Total: 8.826351 ms (FindLiveObjects: 0.089782 ms CreateObjectMapping: 0.030656 ms MarkObjects: 7.723386 ms  DeleteObjects: 0.981543 ms)
+
+Build Finished, Result: Success.
+Launching external process: /Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/Scripting/il2cpp/build/deploy/Analytics
+[websockify wrapper] Proxying from :35020 to localhost:34999
+[websockify wrapper] [ERROR] node:events:346
+[websockify wrapper] [ERROR]       throw er; // Unhandled 'error' event
+[websockify wrapper] [ERROR]       ^
+[websockify wrapper] [ERROR] Error: listen EADDRINUSE: address already in use :::35020
+[websockify wrapper] [ERROR]     at Server.setupListenHandle [as _listen2] (node:net:1311:16)
+[websockify wrapper] [ERROR]     at listenInCluster (node:net:1359:12)
+[websockify wrapper] [ERROR]     at Server.listen (node:net:1446:7)
+[websockify wrapper] [ERROR]     at new WebSocketServer (/Applications/Unity/Hub/Editor/6000.4.3f1/PlaybackEngines/WebGLSupport/BuildTools/websockify/node_modules/ws/lib/websocket-server.js:97:20)
+[websockify wrapper] [ERROR]     at Object.<anonymous> (/Applications/Unity/Hub/Editor/6000.4.3f1/PlaybackEngines/WebGLSupport/BuildTools/websockify/websockify.js:236:12)
+[websockify wrapper] [ERROR]     at Module._compile (node:internal/modules/cjs/loader:1092:14)
+[websockify wrapper] [ERROR]     at Object.Module._extensions..js (node:internal/modules/cjs/loader:1121:10)
+[websockify wrapper] [ERROR]     at Module.load (node:internal/modules/cjs/loader:972:32)
+[websockify wrapper] [ERROR]     at Function.Module._load (node:internal/modules/cjs/loader:813:14)
+[websockify wrapper] [ERROR]     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:76:12)
+[websockify wrapper] [ERROR] Emitted 'error' event on WebSocketServer instance at:
+[websockify wrapper] [ERROR]     at Server.emit (node:events:369:20)
+[websockify wrapper] [ERROR]     at emitErrorNT (node:net:1338:8)
+[websockify wrapper] [ERROR]     at processTicksAndRejections (node:internal/process/task_queues:81:21) {
+[websockify wrapper] [ERROR]   code: 'EADDRINUSE',
+[websockify wrapper] [ERROR]   errno: -48,
+[websockify wrapper] [ERROR]   syscall: 'listen',
+[websockify wrapper] [ERROR]   address: '::',
+[websockify wrapper] [ERROR]   port: 35020
+[websockify wrapper] [ERROR] }
+##utp:{"type":"PlayerBuildInfo","version":2,"phase":"Immediate","time":1776647635502,"processId":55320,"steps":[{"description":"Preprocess Player","duration":27},{"description":"Prepare For Build","duration":0},{"description":"ProducePlayerScriptAssemblies","duration":669},{"description":"Verify Build setup","duration":60},{"description":"Prepare assets for target platform","duration":7},{"description":"Prepare splash screen","duration":0},{"description":"Run script only build","duration":16},{"description":"Build scripts DLLs","duration":7},{"description":"Postprocess built player","duration":726}],"duration":1512}
+Unloading 0 Unused Serialized files (Serialized files now loaded: 0)
+Loaded scene 'Temp/__Backupscenes/0.backup'
+	Deserialize:            0.436 ms
+	Integration:            4.945 ms
+	Integration of assets:  0.001 ms
+	Thread Wait Time:       0.043 ms
+	Total Operation Time:   5.425 ms
+Unloading 0 unused Assets / (0 B). Loaded Objects now: 1119.
+Memory consumption went from 104.5 MB to 104.5 MB.
+Total: 7.182150 ms (FindLiveObjects: 0.060668 ms CreateObjectMapping: 0.017775 ms MarkObjects: 7.092596 ms  DeleteObjects: 0.009991 ms)
+
+WebGL build succeeded: WebBuild
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+BuildScript:BuildWebGL () (at Assets/Editor/BuildScript.cs:32)
+
+(Filename: Assets/Editor/BuildScript.cs Line: 32)
+
+Batchmode quit successfully invoked - shutting down!
+[websockify wrapper] Kill
+[websockify wrapper] Process exit code: 1
+Input System module state changed to: ShutdownInProgress.
+Input Polling Thread exited.
+Input System module state changed to: Shutdown.
+[Physics::Module] Cleanup current backend.
+[Physics::Module] Id: 0xf2b8ea05
+[Licensing::IpcConnector] LicenseClient-danilopineyro-6000.4.3-notifications channel disconnected successfully.
+[Licensing::IpcConnector] LicenseClient-danilopineyro-6000.4.3 channel disconnected successfully.
+AcceleratorClientConnectionCallback - disconnected - :0
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+Cleanup mono
+CodeReloadManager destroyed
+[websockify wrapper] Kill
+debugger-agent: Unable to listen on 44
+[usbmuxd] Stop listen thread
+[usbmuxd] Error: 
+[usbmuxd] Listen thread exiting
+Exiting batchmode successfully now!
+[Package Manager] Server process was shutdown

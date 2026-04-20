@@ -175,8 +175,9 @@ public class Building : MonoBehaviour
             else if (Data.Type == BuildingType.TownCenter)
                 ResourceManager.Instance?.AddPopCap(5);
 
-            // Score
+            // Score + stats
             GameManager.Instance?.AddScore(Data.GoldCost + Data.WoodCost + Data.StoneCost);
+            GameManager.Instance?.NotifyBuildingBuilt();
 
             // Territory
             TerritoryManager.Instance?.ExpandTerritory(GridPosition, Data.Width, Data.Height);
@@ -192,6 +193,13 @@ public class Building : MonoBehaviour
         // Apply race HP multiplier for player buildings
         if (!IsAI && GameManager.Instance?.SelectedRace != null)
             CurrentHealth *= GameManager.Instance.SelectedRace.BuildingHPMultiplier;
+
+        // Apply Masonry bonus retroactively if already researched when building completes
+        if (!IsAI && ResearchManager.Instance != null && ResearchManager.Instance.HasMasonry() && Data != null)
+        {
+            int bonus = Mathf.Max(1, Mathf.RoundToInt(Data.MaxHealth * 0.1f));
+            AddHealth(bonus);
+        }
 
         // Tower auto-attack component (player towers only)
         if (!IsAI && Data.Type == BuildingType.Tower)
@@ -256,38 +264,45 @@ public class Building : MonoBehaviour
         _selectionIndicator?.SetActive(false);
     }
 
-    // ── Visuals ───────────────────────────────────────────────────────────────
+    // ── Visuals (pixel-art top-down) ─────────────────────────────────────────
 
     void CreateVisuals()
     {
-        // Selection ring
-        _selectionIndicator = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        float size = Data != null ? Mathf.Max(Data.Width, Data.Height) * BuildingManager.Instance?.GridSize ?? 2f : 2f;
+
+        // Selection indicator: flat glowing ring on XZ plane
+        _selectionIndicator = GameObject.CreatePrimitive(PrimitiveType.Quad);
         _selectionIndicator.transform.SetParent(transform);
-        _selectionIndicator.transform.localPosition = new Vector3(0, -0.45f, 0);
-        float size = Data != null ? Mathf.Max(Data.Width, Data.Height) + 0.5f : 2.5f;
-        _selectionIndicator.transform.localScale = new Vector3(size, 0.05f, size);
-        _selectionIndicator.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 1f, 0.7f);
+        _selectionIndicator.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+        _selectionIndicator.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        float selSize = size * 1.15f;
+        _selectionIndicator.transform.localScale = new Vector3(selSize, selSize, 1f);
+        var selMat = _selectionIndicator.GetComponent<Renderer>().material;
+        selMat.color = new Color(0.2f, 0.9f, 1f, 0.55f);
         Destroy(_selectionIndicator.GetComponent<Collider>());
         _selectionIndicator.SetActive(false);
 
-        // Health bar
+        // Health bar: two flat sprite quads
         _healthBar = new GameObject("HealthBar");
         _healthBar.transform.SetParent(transform);
-        _healthBar.transform.localPosition = new Vector3(0, 2f, 0);
+        _healthBar.transform.localPosition = Vector3.zero;
 
-        var bg = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        bg.transform.SetParent(_healthBar.transform);
-        bg.transform.localPosition = Vector3.zero;
-        bg.transform.localScale    = new Vector3(1.2f, 0.15f, 0.05f);
-        bg.GetComponent<Renderer>().material.color = Color.black;
-        Destroy(bg.GetComponent<Collider>());
+        float barW = Mathf.Clamp(size * 0.85f, 0.8f, 3.5f);
+        float barH = 0.22f;
+        float barY = 0.12f;
 
-        var fill = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        fill.transform.SetParent(_healthBar.transform);
-        fill.transform.localPosition = new Vector3(-0.001f, 0f, -0.01f);
-        fill.transform.localScale    = new Vector3(1.18f, 0.12f, 0.05f);
-        fill.GetComponent<Renderer>().material.color = Color.green;
-        Destroy(fill.GetComponent<Collider>());
+        var bgTex = new Texture2D(1, 1);
+        bgTex.SetPixel(0, 0, new Color(0.1f, 0.1f, 0.1f, 0.9f));
+        bgTex.Apply();
+
+        var fillTex = new Texture2D(1, 1);
+        fillTex.SetPixel(0, 0, Color.green);
+        fillTex.Apply();
+
+        var bg   = SpriteQuad.Create(bgTex,   barW,       barH,       barY,          _healthBar.transform);
+        var fill = SpriteQuad.Create(fillTex, barW - 0.05f, barH * 0.6f, barY + 0.001f, _healthBar.transform);
+        bg.name   = "HPBarBG";
+        fill.name = "HPBarFill";
         _healthBarFill = fill.transform;
     }
 
@@ -301,17 +316,21 @@ public class Building : MonoBehaviour
     void UpdateHealthBar()
     {
         if (_healthBarFill == null || Data == null) return;
-        float pct = CurrentHealth / Data.MaxHealth;
-        _healthBarFill.localScale = new Vector3(1.18f * pct, 0.12f, 0.05f);
+        float pct = Mathf.Clamp01(CurrentHealth / Data.MaxHealth);
+        float barW = _healthBarFill.parent.GetComponent<MeshRenderer>() == null
+            ? Mathf.Clamp(Mathf.Max(Data.Width, Data.Height) * (BuildingManager.Instance?.GridSize ?? 2f) * 0.85f, 0.8f, 3.5f)
+            : 1f;
+        float fullW = barW - 0.05f;
+        // Scale on X axis (world X = sprite width since it's a flat quad)
+        _healthBarFill.localScale = new Vector3(fullW * pct, _healthBarFill.localScale.y, 1f);
+        // Shift so bar shrinks from right
+        _healthBarFill.localPosition = new Vector3(-fullW * (1f - pct) * 0.5f, _healthBarFill.localPosition.y, _healthBarFill.localPosition.z);
         var rend = _healthBarFill.GetComponent<Renderer>();
         if (rend) rend.material.color = Color.Lerp(Color.red, Color.green, pct);
     }
 
-    void LateUpdate()
-    {
-        if (_healthBar != null && Camera.main != null)
-            _healthBar.transform.rotation = Camera.main.transform.rotation;
-    }
+    // LateUpdate not needed for top-down orthographic camera
+    void LateUpdate() { }
 
     int GetEffectiveFoodProduction()
     {

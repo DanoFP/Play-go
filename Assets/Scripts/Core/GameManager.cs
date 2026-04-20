@@ -13,6 +13,17 @@ public class GameManager : MonoBehaviour
     public string PlayerName = "Player";
     public int PlayerScore = 0;
 
+    // ── End-game statistics ───────────────────────────────────────────────────
+    public int BuildingsBuilt    { get; private set; }
+    public int UnitsLost         { get; private set; }
+    public int EnemiesKilled     { get; private set; }
+    public int RelicsDeposited   { get; private set; }
+
+    public void NotifyBuildingBuilt()   => BuildingsBuilt++;
+    public void NotifyUnitLost()        => UnitsLost++;
+    public void NotifyEnemyKilled()     { EnemiesKilled++; AddScore(10); }
+    public void NotifyRelicDeposited()  { RelicsDeposited++; AddScore(200); }
+
     public RaceData SelectedRace { get; private set; }
 
     public UnityEvent OnGamePaused   = new UnityEvent();
@@ -70,6 +81,15 @@ public class GameManager : MonoBehaviour
             if (race.BonusWoodPerSec  > 0) rm.AddProduction(ResourceType.Wood,  race.BonusWoodPerSec);
             if (race.BonusStonePerSec > 0) rm.AddProduction(ResourceType.Stone, race.BonusStonePerSec);
             if (race.BonusFoodPerSec  > 0) rm.AddProduction(ResourceType.Food,  race.BonusFoodPerSec);
+        }
+
+        // Register race-specific Castle unit
+        var bm = BuildingManager.Instance;
+        if (bm != null)
+        {
+            var uniqueUnit = bm.GetRaceUniqueUnit(race.Type);
+            if (uniqueUnit != null)
+                bm.TrainableUnits[BuildingType.Castle] = new System.Collections.Generic.List<UnitData> { uniqueUnit };
         }
 
         CurrentState = GameState.Playing;

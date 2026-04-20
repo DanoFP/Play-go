@@ -1,6 +1,7 @@
 using UnityEngine;
 
-public enum UnitType { Militia, Spearman, Archer, Skirmisher, Scout, Knight, Monk, BatteringRam, Mangonel }
+public enum UnitType { Militia, Spearman, Archer, Skirmisher, Scout, Knight, Monk, BatteringRam, Mangonel, Trebuchet,
+                       RoyalGuardsman, ForestWarden, Ironbreaker, Warchief }
 public enum DamageType { Melee, Pierce, Siege }
 
 [CreateAssetMenu(fileName = "UnitData", menuName = "RealmForge/Unit Data")]

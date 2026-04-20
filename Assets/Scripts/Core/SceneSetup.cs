@@ -150,11 +150,65 @@ public class SceneSetup : MonoBehaviour
             meleeArmor: 0f,        pierceArmor: 6f,  los: 8f,
             color: new Color(0.45f, 0.30f, 0.14f), minAge: 3);
 
+        // Trebuchet — trained at Siege Workshop (Age 3, deploy-to-fire long-range)
+        var trebuchet = UnitData.Create(
+            name: "Trebuchet",     type: UnitType.Trebuchet,
+            trainingBuilding: BuildingType.SiegeWorkshop,
+            goldCost: 200,         foodCost: 0,      woodCost: 200, popCost: 2,
+            trainTime: 50f,
+            hp: 150f,              atk: 80f,         range: 16f,    speed: 0.4f,
+            dmgType: DamageType.Siege,
+            meleeArmor: 0f,        pierceArmor: 4f,  los: 10f,
+            color: new Color(0.45f, 0.30f, 0.14f), minAge: 3);
+
         bm.TrainableUnits[BuildingType.Barracks]       = new List<UnitData> { militia, spearman };
         bm.TrainableUnits[BuildingType.ArcheryRange]   = new List<UnitData> { archer, skirmisher };
         bm.TrainableUnits[BuildingType.Stable]         = new List<UnitData> { scout, knight };
         bm.TrainableUnits[BuildingType.Monastery]      = new List<UnitData> { monk };
-        bm.TrainableUnits[BuildingType.SiegeWorkshop]  = new List<UnitData> { ram, mangonel };
+        bm.TrainableUnits[BuildingType.SiegeWorkshop]  = new List<UnitData> { ram, mangonel, trebuchet };
+        bm.TrainableUnits[BuildingType.Castle]         = new List<UnitData>(); // filled on race select
+
+        // ── Race unique units ─────────────────────────────────────────────────
+
+        bm.RaceUniqueUnits[RaceType.Humans] = UnitData.Create(
+            name: "Royal Guardsman",   type: UnitType.RoyalGuardsman,
+            trainingBuilding: BuildingType.Castle,
+            goldCost: 75,  foodCost: 60,  woodCost: 0,  popCost: 1,
+            trainTime: 24f,
+            hp: 55f,   atk: 6f,   range: 1.5f,  speed: 1.25f,
+            dmgType: DamageType.Melee,
+            meleeArmor: 1f, pierceArmor: 1f, los: 8f,
+            color: new Color(0.88f, 0.88f, 0.95f), minAge: 3);
+
+        bm.RaceUniqueUnits[RaceType.Elves] = UnitData.Create(
+            name: "Forest Warden",     type: UnitType.ForestWarden,
+            trainingBuilding: BuildingType.Castle,
+            goldCost: 80,  foodCost: 40,  woodCost: 0,  popCost: 1,
+            trainTime: 30f,
+            hp: 38f,   atk: 8f,   range: 9f,    speed: 1.05f,
+            dmgType: DamageType.Pierce,
+            meleeArmor: 0f, pierceArmor: 3f, los: 11f,
+            color: new Color(0.15f, 0.58f, 0.22f), minAge: 3);
+
+        bm.RaceUniqueUnits[RaceType.Dwarves] = UnitData.Create(
+            name: "Ironbreaker",       type: UnitType.Ironbreaker,
+            trainingBuilding: BuildingType.Castle,
+            goldCost: 100, foodCost: 60,  woodCost: 0,  popCost: 2,
+            trainTime: 35f,
+            hp: 180f,  atk: 9f,   range: 1.5f,  speed: 0.75f,
+            dmgType: DamageType.Melee,
+            meleeArmor: 5f, pierceArmor: 3f, los: 6f,
+            color: new Color(0.38f, 0.38f, 0.44f), minAge: 3);
+
+        bm.RaceUniqueUnits[RaceType.Orcs] = UnitData.Create(
+            name: "Warchief",          type: UnitType.Warchief,
+            trainingBuilding: BuildingType.Castle,
+            goldCost: 75,  foodCost: 75,  woodCost: 0,  popCost: 2,
+            trainTime: 32f,
+            hp: 95f,   atk: 10f,  range: 1.5f,  speed: 1.1f,
+            dmgType: DamageType.Melee,
+            meleeArmor: 2f, pierceArmor: 1f, los: 9f,
+            color: new Color(0.50f, 0.80f, 0.22f), minAge: 3);
 
         // Give the AI its unit data
         AIController.Instance?.Initialize(militia, archer);
@@ -233,144 +287,115 @@ public class SceneSetup : MonoBehaviour
         return bd;
     }
 
-    // ── Terrain ──────────────────────────────────────────────────────────────
-
-    static Material Mat(Renderer r, Color color, float glossiness = 0.1f)
-    {
-        var m = r.material;
-        m.color = color;
-        m.SetFloat("_Glossiness", glossiness);
-        return m;
-    }
+    // ── Terrain (pixel-art tiled sprites) ────────────────────────────────────
 
     void SetupTerrain()
     {
+        // Solid background plane (dark color, below sprites)
         var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        ground.name = "Ground"; ground.transform.localScale = new Vector3(25f, 1f, 25f);
-        Mat(ground.GetComponent<Renderer>(), new Color(0.35f, 0.52f, 0.28f), 0.05f);
+        ground.name = "Ground";
+        ground.transform.localScale = new Vector3(25f, 1f, 25f);
+        var gm = ground.GetComponent<Renderer>().material;
+        gm.color = new Color(0.28f, 0.42f, 0.20f);
+        Destroy(ground.GetComponent<Collider>());
 
-        CreateWater(new Vector3(35f, -0.1f, 30f), new Vector3(25f, 0.12f, 20f));
-        CreateMountainRange();
+        // Tile grass sprites across the play area
+        var grassTex  = PixelArtSprites.GrassTile();
+        var waterTex  = PixelArtSprites.WaterTile();
+        const float TileSize = 4f;
+        const int   TileRange = 12;  // ±12 tiles = 96 units each side
+
+        for (int tx = -TileRange; tx < TileRange; tx++)
+        for (int tz = -TileRange; tz < TileRange; tz++)
+        {
+            float cx = tx * TileSize + TileSize * 0.5f;
+            float cz = tz * TileSize + TileSize * 0.5f;
+            bool isWater = (cx > 22f && cx < 60f && cz > 16f && cz < 48f);
+            var tile = SpriteQuad.Create(isWater ? waterTex : grassTex,
+                                         TileSize, TileSize, 0.0f);
+            tile.name = isWater ? "WaterTile" : "GrassTile";
+            tile.transform.position = new Vector3(cx, 0f, cz);
+            Destroy(tile.GetComponent<Collider>());
+        }
+
+        // Plant pixel-art tree sprites in clusters
         PlantForest(new Vector3( 20, 0,  15), 7);
         PlantForest(new Vector3(-25, 0,  20), 6);
         PlantForest(new Vector3( 30, 0, -10), 5);
         PlantForest(new Vector3(-35, 0, -25), 5);
+
+        // Scatter rock sprites
         ScatterRocks(new Vector3(-20, 0, -15), 5);
         ScatterRocks(new Vector3( 25, 0,  25), 4);
-        ScatterBushes(22);
-    }
-
-    void CreateWater(Vector3 pos, Vector3 scale)
-    {
-        var w = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        w.name = "Lake"; w.transform.position = pos; w.transform.localScale = scale;
-        var m = w.GetComponent<Renderer>().material;
-        m.color = new Color(0.2f, 0.45f, 0.7f, 0.8f);
-        m.SetFloat("_Mode", 3); m.SetFloat("_Glossiness", 0.95f);
-        m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        m.SetInt("_ZWrite", 0); m.EnableKeyword("_ALPHABLEND_ON"); m.renderQueue = 3000;
-        Destroy(w.GetComponent<Collider>());
-    }
-
-    void CreateMountainRange()
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            var m = GameObject.CreatePrimitive(PrimitiveType.Cube); m.name = "Mountain";
-            float mh = Random.Range(12f, 30f), mw = Random.Range(10f, 22f);
-            m.transform.position   = new Vector3(Random.Range(-70f, 70f), mh / 2f, Random.Range(65f, 95f));
-            m.transform.localScale = new Vector3(mw, mh, mw * 0.8f);
-            Mat(m.GetComponent<Renderer>(), new Color(0.38f, 0.38f, 0.42f), 0.02f);
-            Destroy(m.GetComponent<Collider>());
-        }
     }
 
     void PlantForest(Vector3 center, int count)
     {
+        var treeTex = PixelArtSprites.TreeTex();
         for (int i = 0; i < count; i++)
-            PlantTree(center + new Vector3(Random.Range(-7f, 7f), 0, Random.Range(-7f, 7f)));
-    }
-
-    void PlantTree(Vector3 p)
-    {
-        var t = new GameObject("Tree"); t.transform.position = p;
-        float h = Random.Range(2.5f, 5f);
-        var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        trunk.transform.SetParent(t.transform);
-        trunk.transform.localPosition = new Vector3(0, h * 0.3f, 0);
-        trunk.transform.localScale    = new Vector3(0.22f, h * 0.32f, 0.22f);
-        trunk.GetComponent<Renderer>().material.color = new Color(0.38f, 0.22f, 0.08f);
-        Destroy(trunk.GetComponent<Collider>());
-        for (int i = 0; i < 2; i++)
         {
-            var leaf = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            leaf.transform.SetParent(t.transform);
-            float ly = h * 0.6f + i * h * 0.22f, ls = h * 0.42f - i * h * 0.12f;
-            leaf.transform.localPosition = new Vector3(Random.Range(-0.1f, 0.1f), ly, Random.Range(-0.1f, 0.1f));
-            leaf.transform.localScale    = new Vector3(ls, ls * 0.78f, ls);
-            leaf.GetComponent<Renderer>().material.color = new Color(0.1f, Random.Range(0.38f, 0.68f), 0.08f);
-            Destroy(leaf.GetComponent<Collider>());
+            float x = center.x + Random.Range(-7f, 7f);
+            float z = center.z + Random.Range(-7f, 7f);
+            float s = Random.Range(1.6f, 2.4f);
+            var tree = SpriteQuad.Create(treeTex, s, s, 0.03f);
+            tree.name = "Tree";
+            tree.transform.position = new Vector3(x, 0f, z);
+            Destroy(tree.GetComponent<Collider>());
         }
     }
 
     void ScatterRocks(Vector3 center, int count)
     {
+        var rockTex = PixelArtSprites.RockTex();
         for (int i = 0; i < count; i++)
         {
-            var rock = GameObject.CreatePrimitive(PrimitiveType.Sphere); rock.name = "Rock";
-            float rh = Random.Range(0.5f, 1.3f), rw = Random.Range(0.7f, 1.6f);
-            rock.transform.position   = center + new Vector3(Random.Range(-5f, 5f), rh * 0.4f, Random.Range(-5f, 5f));
-            rock.transform.localScale = new Vector3(rw, rh, rw * 0.88f);
-            rock.transform.rotation   = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
-            Mat(rock.GetComponent<Renderer>(), new Color(0.58f, 0.58f, 0.61f), 0.08f);
+            float x = center.x + Random.Range(-5f, 5f);
+            float z = center.z + Random.Range(-5f, 5f);
+            float s = Random.Range(0.9f, 1.5f);
+            var rock = SpriteQuad.Create(rockTex, s, s, 0.03f);
+            rock.name = "Rock";
+            rock.transform.position = new Vector3(x, 0f, z);
             Destroy(rock.GetComponent<Collider>());
         }
     }
 
-    void ScatterBushes(int count)
-    {
-        for (int i = 0; i < count; i++)
-        {
-            float x = Random.Range(-45f, 45f), z = Random.Range(-45f, 45f);
-            if (Mathf.Abs(x) < 14f && Mathf.Abs(z) < 14f) continue;
-            var b = GameObject.CreatePrimitive(PrimitiveType.Sphere); b.name = "Bush";
-            float s = Random.Range(0.3f, 0.75f);
-            b.transform.position   = new Vector3(x, 0.28f, z);
-            b.transform.localScale = new Vector3(s, s * 0.65f, s);
-            b.GetComponent<Renderer>().material.color = new Color(0.12f, Random.Range(0.32f, 0.58f), 0.08f);
-            Destroy(b.GetComponent<Collider>());
-        }
-    }
-
-    // ── Camera ───────────────────────────────────────────────────────────────
+    // ── Camera (orthographic top-down) ────────────────────────────────────────
 
     void SetupCamera()
     {
         var cam = Camera.main;
         if (cam == null) return;
-        cam.transform.position = new Vector3(0f, 30f, -22f);
-        cam.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
-        cam.backgroundColor    = new Color(0.53f, 0.81f, 0.98f);
+
+        // True top-down orthographic
+        cam.orthographic     = true;
+        cam.orthographicSize = 22f;
+        cam.transform.position = new Vector3(0f, 60f, 0f);
+        cam.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        cam.backgroundColor    = new Color(0.18f, 0.28f, 0.14f);
+        cam.nearClipPlane      = 0.1f;
+        cam.farClipPlane       = 120f;
+
         var ctrl = cam.gameObject.AddComponent<CameraController>();
-        ctrl.MoveSpeed = 22f; ctrl.MinZoom = 18f; ctrl.MaxZoom = 80f;
-        ctrl.BoundsMin = new Vector2(-85f, -85f); ctrl.BoundsMax = new Vector2(85f, 85f);
+        ctrl.MoveSpeed  = 18f;
+        ctrl.MinZoom    = 8f;
+        ctrl.MaxZoom    = 45f;
+        ctrl.BoundsMin  = new Vector2(-85f, -85f);
+        ctrl.BoundsMax  = new Vector2(85f, 85f);
     }
 
     // ── Lighting ─────────────────────────────────────────────────────────────
 
     void SetupLighting()
     {
+        // Sprites are Unlit so lighting is minimal, but keep ambient for any non-sprite objects
         var sun = FindAnyObjectByType<Light>();
         if (sun == null) { sun = new GameObject("Sun").AddComponent<Light>(); sun.type = LightType.Directional; }
-        sun.color     = new Color(1f, 0.96f, 0.86f); sun.intensity = 1.25f;
-        sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f); sun.shadows = LightShadows.Soft;
-        RenderSettings.ambientLight      = new Color(0.4f, 0.45f, 0.5f);
-        RenderSettings.fog               = true;
-        RenderSettings.fogMode           = FogMode.Linear;
-        RenderSettings.fogColor          = new Color(0.7f, 0.8f, 0.9f);
-        RenderSettings.fogStartDistance  = 85f;
-        RenderSettings.fogEndDistance    = 170f;
+        sun.color     = new Color(1f, 0.96f, 0.86f);
+        sun.intensity = 1.0f;
+        sun.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        sun.shadows   = LightShadows.None;
+        RenderSettings.ambientLight = new Color(0.9f, 0.9f, 0.9f);  // bright ambient for pixel art
+        RenderSettings.fog          = false;
     }
 
     // ── Resource Nodes ────────────────────────────────────────────────────────
@@ -385,6 +410,12 @@ public class SceneSetup : MonoBehaviour
         SpawnNodeCluster(ResourceNode.NodeType.Stone, new Vector3( 25, 0,  25), 3, 160);
         SpawnNodeCluster(ResourceNode.NodeType.Gold,  new Vector3( 14, 0, -22), 2, 220);
         SpawnNodeCluster(ResourceNode.NodeType.Gold,  new Vector3(-12, 0,  32), 2, 220);
+
+        // Relics: 4 scattered across mid-map, away from both bases
+        Relic.SpawnAt(new Vector3(  0, 0,  18));
+        Relic.SpawnAt(new Vector3(-16, 0,   8));
+        Relic.SpawnAt(new Vector3( 16, 0,  -8));
+        Relic.SpawnAt(new Vector3(  8, 0, -20));
     }
 
     void SpawnNodeCluster(ResourceNode.NodeType type, Vector3 center, int count, int amountEach)

@@ -161,6 +161,21 @@ public static class ResearchCatalog
             // ── University ────────────────────────────────────────────────────
             new ResearchData
             {
+                Id = "masonry",
+                Name = "Masonry",
+                Description = "All buildings gain +10% HP. Retroactive on existing structures.",
+                RequiredBuilding = BuildingType.University,
+                MinAge = 3,
+                FoodCost = 175,
+                WoodCost = 175,
+                ResearchTime = 50f,
+                Effects = new List<ResearchEffect>
+                {
+                    new ResearchEffect(ResearchEffectType.HealthBonus, 0.1f, ResearchTarget.Building),
+                }
+            },
+            new ResearchData
+            {
                 Id = "guard_tower",
                 Name = "Guard Tower",
                 Description = "Watch Towers gain +3 attack and +2 range.",

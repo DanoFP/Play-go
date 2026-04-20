@@ -28,7 +28,7 @@ public class CameraController : MonoBehaviour
     {
         _cam = GetComponent<Camera>();
         if (_cam == null) _cam = Camera.main;
-        _targetZoom = _cam.fieldOfView;
+        _targetZoom = _cam.orthographic ? _cam.orthographicSize : _cam.fieldOfView;
     }
 
     void Update()
@@ -45,37 +45,35 @@ public class CameraController : MonoBehaviour
     {
         Vector3 move = Vector3.zero;
 
-        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
-            move += transform.forward;
-        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
-            move -= transform.forward;
-        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            move -= transform.right;
-        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            move += transform.right;
+        // For top-down orthographic: pan on XZ plane
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))    move += Vector3.forward;
+        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))   move -= Vector3.forward;
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))   move -= Vector3.right;
+        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))  move += Vector3.right;
 
-        // Keep movement horizontal
-        move.y = 0f;
-        if (move.magnitude > 0.01f)
-            move = move.normalized;
-
-        transform.position += move * MoveSpeed * Time.deltaTime;
+        if (move.magnitude > 0.01f) move = move.normalized;
+        var pos = transform.position;
+        pos.x += move.x * MoveSpeed * Time.deltaTime;
+        pos.z += move.z * MoveSpeed * Time.deltaTime;
+        transform.position = pos;
     }
 
     void HandleEdgeScrolling()
     {
         if (!UseEdgeScrolling) return;
 
-        Vector3 move = Vector3.zero;
         Vector3 mousePos = Input.mousePosition;
+        float dx = 0f, dz = 0f;
 
-        if (mousePos.x < EdgeScrollThreshold) move -= transform.right;
-        else if (mousePos.x > Screen.width - EdgeScrollThreshold) move += transform.right;
-        if (mousePos.y < EdgeScrollThreshold) move -= transform.forward;
-        else if (mousePos.y > Screen.height - EdgeScrollThreshold) move += transform.forward;
+        if (mousePos.x < EdgeScrollThreshold)                      dx = -1f;
+        else if (mousePos.x > Screen.width - EdgeScrollThreshold)  dx =  1f;
+        if (mousePos.y < EdgeScrollThreshold)                      dz = -1f;
+        else if (mousePos.y > Screen.height - EdgeScrollThreshold) dz =  1f;
 
-        move.y = 0f;
-        transform.position += move * MoveSpeed * 0.7f * Time.deltaTime;
+        var pos = transform.position;
+        pos.x += dx * MoveSpeed * 0.7f * Time.deltaTime;
+        pos.z += dz * MoveSpeed * 0.7f * Time.deltaTime;
+        transform.position = pos;
     }
 
     void HandleZoom()
@@ -86,11 +84,16 @@ public class CameraController : MonoBehaviour
             _targetZoom -= scroll * ZoomSpeed * 10f;
             _targetZoom = Mathf.Clamp(_targetZoom, MinZoom, MaxZoom);
         }
-        _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, _targetZoom, Time.deltaTime * 8f);
+
+        if (_cam.orthographic)
+            _cam.orthographicSize = Mathf.Lerp(_cam.orthographicSize, _targetZoom, Time.deltaTime * 8f);
+        else
+            _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, _targetZoom, Time.deltaTime * 8f);
     }
 
     void HandleRotation()
     {
+        // Top-down camera: Q/E rotate the view around Y axis
         if (Input.GetKey(KeyCode.Q))
             transform.Rotate(Vector3.up, -RotationSpeed * Time.deltaTime, Space.World);
         if (Input.GetKey(KeyCode.E))

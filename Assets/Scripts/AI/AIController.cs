@@ -171,6 +171,12 @@ public class AIController : MonoBehaviour
             _units.Add(unit);
     }
 
+    // Called when a Monk converts an AI unit to the player side
+    public void UnregisterUnit(MilitaryUnit unit)
+    {
+        _units.Remove(unit);
+    }
+
     // ── Attack waves ──────────────────────────────────────────────────────────
 
     void LaunchWave()

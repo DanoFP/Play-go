@@ -17,6 +17,13 @@ public class BuildingManager : MonoBehaviour
     public Dictionary<BuildingType, List<UnitData>> TrainableUnits
         = new Dictionary<BuildingType, List<UnitData>>();
 
+    // ── Race unique units (Castle) ─────────────────────────────────────────────
+    public Dictionary<RaceType, UnitData> RaceUniqueUnits
+        = new Dictionary<RaceType, UnitData>();
+
+    public UnitData GetRaceUniqueUnit(RaceType race) =>
+        RaceUniqueUnits.TryGetValue(race, out var u) ? u : null;
+
     // ── Internal state ────────────────────────────────────────────────────────
     BuildingData  _selectedBuildingData;
     GameObject    _previewObject;
@@ -538,33 +545,21 @@ public class BuildingManager : MonoBehaviour
         return building;
     }
 
-    // ── Mesh creation ─────────────────────────────────────────────────────────
+    // ── Mesh creation (pixel-art sprites) ────────────────────────────────────
 
     public GameObject CreateBuildingMesh(BuildingData data)
     {
         var root = new GameObject(data.BuildingName);
-        float w = data.Width  * GridSize * 0.9f;
-        float h = data.Height * GridSize * 0.9f;
+        float w = data.Width  * GridSize;
+        float h = data.Height * GridSize;
 
-        switch (data.Type)
-        {
-            case BuildingType.TownCenter:   CreateTownCenter(root, w, h, data.BuildingColor); break;
-            case BuildingType.Tower:        CreateTower(root, w, h, data.BuildingColor);      break;
-            case BuildingType.Farm:         CreateFarm(root, w, h, data.BuildingColor);       break;
-            case BuildingType.Barracks:     CreateBarracks(root, w, h, data.BuildingColor);   break;
-            case BuildingType.ArcheryRange: CreateArcheryRange(root, w, h, data.BuildingColor); break;
-            case BuildingType.Blacksmith:   CreateBlacksmith(root, w, h, data.BuildingColor); break;
-            case BuildingType.University:   CreateUniversity(root, w, h, data.BuildingColor); break;
-            case BuildingType.Monastery:    CreateMonastery(root, w, h, data.BuildingColor); break;
-            case BuildingType.SiegeWorkshop: CreateSiegeWorkshop(root, w, h, data.BuildingColor); break;
-            case BuildingType.Castle:       CreateCastle(root, w, h, data.BuildingColor); break;
-            case BuildingType.Stable:       CreateStable(root, w, h, data.BuildingColor); break;
-            case BuildingType.LumberCamp:   CreateLumberCamp(root, w, h, data.BuildingColor); break;
-            case BuildingType.MiningCamp:   CreateMiningCamp(root, w, h, data.BuildingColor); break;
-            case BuildingType.Mill:         CreateMill(root, w, h, data.BuildingColor);       break;
-            case BuildingType.Wall:         CreateWallSegment(root, w, h, data.BuildingColor); break;
-            default:                        CreateGenericBuilding(root, w, h, data.BuildingColor); break;
-        }
+        // Flat pixel-art sprite quad
+        var tex = PixelArtSprites.BuildingSprite(data.Type);
+        SpriteQuad.Create(tex, w, h, 0.05f, root.transform);
+
+        // Invisible collider for click-selection and raycasting
+        SpriteQuad.AddFlatCollider(root, w, h, 0.5f);
+
         return root;
     }
 

@@ -99,16 +99,19 @@ public class Projectile : MonoBehaviour
         var go = new GameObject("Projectile");
         go.transform.position = pos;
 
-        var mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        mesh.transform.SetParent(go.transform);
-        mesh.transform.localPosition = Vector3.zero;
-        // Mangonel rocks are bigger and darker
-        float scale = isAoe ? 0.28f : 0.14f;
-        mesh.transform.localScale = new Vector3(scale, scale, scale);
-        mesh.GetComponent<Renderer>().material.color = isAoe
-            ? new Color(0.30f, 0.28f, 0.25f)
-            : new Color(0.2f, 0.15f, 0.05f);
-        Destroy(mesh.GetComponent<Collider>());
+        // Pixel-art projectile: small flat sprite quad
+        float size = isAoe ? 0.6f : 0.3f;
+        var tex = new Texture2D(4, 4, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Point;
+        var col = isAoe ? new Color32(90, 80, 65, 255) : new Color32(55, 40, 10, 255);
+        var pixels = new Color32[16];
+        for (int i = 0; i < 16; i++) pixels[i] = col;
+        // Bright center
+        pixels[5] = pixels[6] = pixels[9] = pixels[10] = new Color32(200, 180, 100, 255);
+        tex.SetPixels32(pixels);
+        tex.Apply();
+
+        SpriteQuad.Create(tex, size, size, 0.15f, go.transform);
         return go;
     }
 
