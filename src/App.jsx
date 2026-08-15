@@ -4,10 +4,24 @@ import GameBoard from './components/GameBoard.jsx';
 import SuspectList from './components/SuspectList.jsx';
 import './App.css';
 
+function computeAutoEliminated(placements, N) {
+  const auto = new Set();
+  for (const [, pos] of Object.entries(placements)) {
+    if (!pos) continue;
+    for (let c = 0; c < N; c++) {
+      if (c !== pos.col) auto.add(`${pos.row},${c}`);
+    }
+    for (let r = 0; r < N; r++) {
+      if (r !== pos.row) auto.add(`${r},${pos.col}`);
+    }
+  }
+  return auto;
+}
+
 function freshState(numSuspects) {
   const puzzle = generatePuzzle(numSuspects);
   const placements = Object.fromEntries(puzzle.suspects.map(s => [s.id, null]));
-  return { puzzle, placements, eliminated: new Set(), activeSuspect: puzzle.suspects[0].id };
+  return { puzzle, placements, manualEliminated: new Set(), activeSuspect: puzzle.suspects[0].id };
 }
 
 export default function App() {
@@ -16,7 +30,9 @@ export default function App() {
   const [gameStatus, setGameStatus] = useState('playing'); // playing | won | lost | revealed
   const [message, setMessage] = useState('');
 
-  const { puzzle, placements, eliminated, activeSuspect } = state;
+  const { puzzle, placements, manualEliminated, activeSuspect } = state;
+  const autoEliminated = computeAutoEliminated(placements, puzzle.N);
+  const eliminated = new Set([...autoEliminated, ...manualEliminated]);
 
   function newGame(n = numSuspects) {
     setState(freshState(n));
@@ -36,42 +52,37 @@ export default function App() {
 
     setState(prev => {
       const key = `${row},${col}`;
-      const newElim = new Set(prev.eliminated);
+      const newManual = new Set(prev.manualEliminated);
       const newPlacements = { ...prev.placements };
 
-      // Is there already a suspect placed here (by user)?
       const occupyingSuspect = Object.entries(newPlacements).find(
         ([, p]) => p && p.row === row && p.col === col
       );
 
       if (prev.activeSuspect) {
-        // If active suspect already placed here → remove them (toggle off)
+        // Toggle off if clicking on own cell
         if (occupyingSuspect && occupyingSuspect[0] === prev.activeSuspect) {
           newPlacements[prev.activeSuspect] = null;
-          return { ...prev, placements: newPlacements, eliminated: newElim };
+          return { ...prev, placements: newPlacements };
         }
-        // If another suspect is here → don't overwrite
+        // Another suspect is here → block
         if (occupyingSuspect) return prev;
 
-        // Place active suspect here (remove from old position first)
+        // Place suspect; checkPlacement rejects duplicate row/col
         newPlacements[prev.activeSuspect] = { row, col };
-        // Remove X if present
-        newElim.delete(key);
-
+        newManual.delete(key);
         const check = checkPlacement(puzzle, newPlacements);
-        if (!check.valid) {
-          return prev; // reject invalid placement silently
-        }
-        return { ...prev, placements: newPlacements, eliminated: newElim };
+        if (!check.valid) return prev;
+        return { ...prev, placements: newPlacements, manualEliminated: newManual };
       } else {
-        // No active suspect: toggle X mark (only on empty cells)
+        // No active suspect: toggle manual X only on truly empty cells
         if (occupyingSuspect) return prev;
-        if (newElim.has(key)) {
-          newElim.delete(key);
+        if (newManual.has(key)) {
+          newManual.delete(key);
         } else {
-          newElim.add(key);
+          newManual.add(key);
         }
-        return { ...prev, eliminated: newElim };
+        return { ...prev, manualEliminated: newManual };
       }
     });
   }, [gameStatus, puzzle]);
@@ -179,8 +190,9 @@ export default function App() {
             <ul>
               <li>Seleccioná un sospechoso de la lista</li>
               <li>Clickeá la celda correcta en el mapa</li>
-              <li>Sin sospechoso activo: click marca ✕ (elimina)</li>
-              <li>Click en celda ocupada por el sospechoso activo: lo retira</li>
+              <li>Al colocar un sospechoso, su fila y columna se tachan solas</li>
+              <li>Sin sospechoso activo: click marca/desmarca ✕ manual</li>
+              <li>Click en celda propia del sospechoso activo: lo retira</li>
             </ul>
           </div>
         </div>
