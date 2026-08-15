@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { generatePuzzle, checkPlacement, isCorrectSolution } from './utils/puzzleGenerator.js';
+import { generatePuzzle, checkPlacement, isCorrectSolution, canPlaceAt } from './utils/puzzleGenerator.js';
 import GameBoard from './components/GameBoard.jsx';
 import SuspectList from './components/SuspectList.jsx';
 import './App.css';
@@ -67,6 +67,8 @@ export default function App() {
         }
         // Another suspect is here → block
         if (occupyingSuspect) return prev;
+        // Celda con objeto no ocupable → block
+        if (!canPlaceAt(puzzle, row, col)) return prev;
 
         // Place suspect; checkPlacement rejects duplicate row/col
         newPlacements[prev.activeSuspect] = { row, col };

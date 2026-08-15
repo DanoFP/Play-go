@@ -1,4 +1,4 @@
-import { OBJECT_TYPES } from '../utils/puzzleGenerator.js';
+import { OBJECT_TYPES, canPlaceAt } from '../utils/puzzleGenerator.js';
 
 const CELL_SIZE = 64;
 
@@ -101,11 +101,12 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
             const xed = isEliminated(row, col);
             const victimHere = isVictimCell(row, col);
             const isMurdererCell = showSolution && solutionSuspect && solutionSuspect.id === puzzle.murderer;
+            const blocked = obj && !OBJECT_TYPES[obj.type].occupiable;
 
             return (
               <div
                 key={`${row}-${col}`}
-                className={`cell ${xed ? 'cell-x' : ''} ${isMurdererCell ? 'cell-murderer' : ''}`}
+                className={`cell ${xed && !blocked ? 'cell-x' : ''} ${isMurdererCell ? 'cell-murderer' : ''} ${blocked ? 'cell-blocked' : ''}`}
                 style={{
                   position: 'absolute',
                   left: col * CELL_SIZE,
@@ -114,7 +115,7 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
                   height: CELL_SIZE,
                   boxSizing: 'border-box',
                   border: '1px solid rgba(0,0,0,0.15)',
-                  cursor: gameStatus === 'playing' ? 'pointer' : 'default',
+                  cursor: gameStatus === 'playing' && !blocked ? 'pointer' : 'default',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',

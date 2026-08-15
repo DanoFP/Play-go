@@ -80,6 +80,8 @@ body {
 .cell:hover { background: rgba(255,255,255,0.12) !important; }
 
 .cell-murderer { outline: 3px solid #e74c3c; outline-offset: -3px; }
+.cell-blocked { background: rgba(0,0,0,0.18) !important; cursor: not-allowed !important; }
+.cell-blocked:hover { background: rgba(0,0,0,0.22) !important; }
 
 /* ── Tokens ── */
 .token {

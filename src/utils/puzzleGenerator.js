@@ -17,14 +17,17 @@ const SUSPECT_NAMES = [
 const VICTIM_NAMES = ['Vincent', 'Vinny', 'Victor', 'Vera', 'Vince'];
 
 export const OBJECT_TYPES = {
-  bed:        { label: 'una cama',         icon: '🛏️',  clueOn: 'Estaba sobre la cama' },
-  table:      { label: 'una mesa',         icon: '🪑',  clueOn: 'Estaba junto a una mesa' },
-  window:     { label: 'una ventana',      icon: '🪟',  clueOn: 'Estaba delante de una ventana' },
-  rug:        { label: 'una alfombra',     icon: '🟫',  clueOn: 'Estaba sobre la alfombra' },
-  plant:      { label: 'una planta',       icon: '🌿',  clueOn: 'Estaba junto a una planta' },
-  bookshelf:  { label: 'una estantería',   icon: '📚',  clueOn: 'Estaba junto a la estantería' },
-  fireplace:  { label: 'una chimenea',     icon: '🔥',  clueOn: 'Estaba junto a la chimenea' },
-  wardrobe:   { label: 'un armario',       icon: '🚪',  clueOn: 'Estaba junto al armario' },
+  // Ocupables: el sospechoso puede estar EN la misma celda
+  bed:       { label: 'una cama',       icon: '🛏️', clueOn: 'Estaba sobre la cama',     occupiable: true  },
+  chair:     { label: 'una silla',      icon: '🪑', clueOn: 'Estaba sobre una silla',   occupiable: true  },
+  rug:       { label: 'una alfombra',   icon: '🟫', clueOn: 'Estaba sobre la alfombra', occupiable: true  },
+  // No ocupables: el sospechoso debe estar en una celda ADYACENTE
+  table:     { label: 'una mesa',       icon: '🍽️', clueOn: null, occupiable: false },
+  window:    { label: 'una ventana',    icon: '🪟', clueOn: null, occupiable: false },
+  plant:     { label: 'una planta',     icon: '🌿', clueOn: null, occupiable: false },
+  bookshelf: { label: 'una estantería', icon: '📚', clueOn: null, occupiable: false },
+  fireplace: { label: 'una chimenea',   icon: '🔥', clueOn: null, occupiable: false },
+  wardrobe:  { label: 'un armario',     icon: '🚪', clueOn: null, occupiable: false },
 };
 
 function shuffle(arr) {
@@ -98,13 +101,20 @@ function splitEvenly(total, parts) {
   return Array.from({ length: parts }, (_, i) => base + (i < extra ? 1 : 0));
 }
 
-function addObjectsToRooms(rooms) {
+function addObjectsToRooms(rooms, occupiedSet = new Set()) {
   const objectKeys = Object.keys(OBJECT_TYPES);
   for (const room of rooms) {
     const picked = shuffle(objectKeys).slice(0, Math.min(2, room.cells.length - 1));
     const usedCells = new Set();
     for (const objType of picked) {
-      const available = room.cells.filter(c => !usedCells.has(`${c.row},${c.col}`));
+      const isOccupiable = OBJECT_TYPES[objType].occupiable;
+      const available = room.cells.filter(c => {
+        const key = `${c.row},${c.col}`;
+        if (usedCells.has(key)) return false;
+        // Objetos no ocupables nunca pueden ir en celdas de sospechosos/víctima
+        if (!isOccupiable && occupiedSet.has(key)) return false;
+        return true;
+      });
       if (available.length === 0) continue;
       const cell = available[Math.floor(Math.random() * available.length)];
       usedCells.add(`${cell.row},${cell.col}`);
@@ -141,14 +151,14 @@ function getAdjacentObject(rooms, row, col) {
 
 function generateClue(rooms, row, col, roomForClue) {
   const obj = getObjectAt(rooms, row, col);
-  if (obj) {
+  // Solo generar clue "sobre" si el objeto es ocupable (cama, silla, alfombra)
+  if (obj && OBJECT_TYPES[obj.type].occupiable) {
     return { text: OBJECT_TYPES[obj.type].clueOn, type: 'onObject', target: obj.type };
   }
   const adjObj = getAdjacentObject(rooms, row, col);
   if (adjObj) {
-    const label = OBJECT_TYPES[adjObj.type].label;
     return {
-      text: `Estaba junto a ${label}`,
+      text: `Estaba junto a ${OBJECT_TYPES[adjObj.type].label}`,
       type: 'nextToObject',
       target: adjObj.type,
     };
@@ -160,14 +170,25 @@ function generateClue(rooms, row, col, roomForClue) {
   };
 }
 
+export function canPlaceAt(puzzle, row, col) {
+  for (const room of puzzle.rooms) {
+    const obj = room.objects.find(o => o.row === row && o.col === col);
+    if (obj) return OBJECT_TYPES[obj.type].occupiable;
+  }
+  return true;
+}
+
 export function generatePuzzle(numSuspects = 3) {
   const N = numSuspects + 1;
   const rooms = createRooms(N);
-  addObjectsToRooms(rooms);
 
-  // Generate valid N-rook placement: each row and col used exactly once
+  // Placement primero → sabemos qué celdas estarán ocupadas
   const cols = generatePermutation(N);
   const placement = cols.map((col, row) => ({ row, col }));
+  const occupiedSet = new Set(placement.map(p => `${p.row},${p.col}`));
+
+  // Objetos respetan las celdas ocupadas
+  addObjectsToRooms(rooms, occupiedSet);
 
   const names = shuffle([...SUSPECT_NAMES]).slice(0, numSuspects);
   const victimName = VICTIM_NAMES[Math.floor(Math.random() * VICTIM_NAMES.length)];
