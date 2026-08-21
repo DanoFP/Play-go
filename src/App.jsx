@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { generatePuzzle, checkPlacement, isCorrectSolution, canPlaceAt } from './utils/puzzleGenerator.js';
+import { generatePuzzle, checkPlacement, isCorrectSolution, canPlaceAt, SCENARIOS } from './utils/puzzleGenerator.js';
 import GameBoard from './components/GameBoard.jsx';
 import SuspectList from './components/SuspectList.jsx';
 import './App.css';
@@ -18,31 +18,45 @@ function computeAutoEliminated(placements, N) {
   return auto;
 }
 
-function freshState(numSuspects) {
-  const puzzle = generatePuzzle(numSuspects);
+function freshState(numSuspects, scenarioId) {
+  const puzzle = generatePuzzle(numSuspects, scenarioId);
   const placements = Object.fromEntries(puzzle.suspects.map(s => [s.id, null]));
   return { puzzle, placements, manualEliminated: new Set(), activeSuspect: puzzle.suspects[0].id };
 }
 
 export default function App() {
   const [numSuspects, setNumSuspects] = useState(3);
-  const [state, setState] = useState(() => freshState(3));
-  const [gameStatus, setGameStatus] = useState('playing'); // playing | won | lost | revealed
+  const [scenarioId, setScenarioId] = useState(null);
+  const [state, setState] = useState(() => freshState(3, null));
+  const [gameStatus, setGameStatus] = useState('playing');
   const [message, setMessage] = useState('');
 
   const { puzzle, placements, manualEliminated, activeSuspect } = state;
   const autoEliminated = computeAutoEliminated(placements, puzzle.N);
   const eliminated = new Set([...autoEliminated, ...manualEliminated]);
 
-  function newGame(n = numSuspects) {
-    setState(freshState(n));
+  const scenarioGroup = numSuspects <= 3 ? SCENARIOS.small : SCENARIOS.large;
+
+  function newGame(n = numSuspects, sid = scenarioId) {
+    setState(freshState(n, sid));
     setGameStatus('playing');
     setMessage('');
   }
 
   function handleDifficultyChange(n) {
+    // Reset scenarioId if switching to a group that doesn't have it
+    const newGroup = n <= 3 ? SCENARIOS.small : SCENARIOS.large;
+    const newSid = newGroup.find(s => s.id === scenarioId) ? scenarioId : null;
     setNumSuspects(n);
-    setState(freshState(n));
+    setScenarioId(newSid);
+    setState(freshState(n, newSid));
+    setGameStatus('playing');
+    setMessage('');
+  }
+
+  function handleScenarioChange(sid) {
+    setScenarioId(sid);
+    setState(freshState(numSuspects, sid));
     setGameStatus('playing');
     setMessage('');
   }
@@ -60,24 +74,19 @@ export default function App() {
       );
 
       if (prev.activeSuspect) {
-        // Toggle off if clicking on own cell
         if (occupyingSuspect && occupyingSuspect[0] === prev.activeSuspect) {
           newPlacements[prev.activeSuspect] = null;
           return { ...prev, placements: newPlacements };
         }
-        // Another suspect is here → block
         if (occupyingSuspect) return prev;
-        // Celda con objeto no ocupable → block
         if (!canPlaceAt(puzzle, row, col)) return prev;
 
-        // Place suspect; checkPlacement rejects duplicate row/col
         newPlacements[prev.activeSuspect] = { row, col };
         newManual.delete(key);
         const check = checkPlacement(puzzle, newPlacements);
         if (!check.valid) return prev;
         return { ...prev, placements: newPlacements, manualEliminated: newManual };
       } else {
-        // No active suspect: toggle manual X only on truly empty cells
         if (occupyingSuspect) return prev;
         if (newManual.has(key)) {
           newManual.delete(key);
@@ -113,10 +122,15 @@ export default function App() {
 
   const allPlaced = puzzle.suspects.every(s => placements[s.id] !== null);
 
+  const activeScenario = puzzle.scenario;
+
   return (
     <div className="app">
       <header className="header">
-        <h1 className="title">🔍 Detective</h1>
+        <div className="case-label">EXPEDIENTE MURDOKU</div>
+        <h1 className="title">
+          {activeScenario ? `${activeScenario.icon} ${activeScenario.name}` : '🔍 Detective'}
+        </h1>
         <p className="subtitle">Encuentra al asesino usando las pistas</p>
       </header>
 
@@ -134,6 +148,25 @@ export default function App() {
           ))}
         </div>
         <button className="btn btn-new" onClick={() => newGame()}>Nueva partida</button>
+      </div>
+
+      <div className="scenario-bar">
+        <span className="difficulty-label">Escenario:</span>
+        <button
+          className={`btn-scenario ${!scenarioId ? 'btn-scenario-active' : ''}`}
+          onClick={() => handleScenarioChange(null)}
+        >
+          🎲 Aleatorio
+        </button>
+        {scenarioGroup.map(s => (
+          <button
+            key={s.id}
+            className={`btn-scenario ${scenarioId === s.id ? 'btn-scenario-active' : ''}`}
+            onClick={() => handleScenarioChange(s.id)}
+          >
+            {s.icon} {s.name}
+          </button>
+        ))}
       </div>
 
       <div className="rules-banner">
