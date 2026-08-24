@@ -317,6 +317,43 @@ body {
 .message-reveal { background: rgba(231,76,60,0.09);  border: 1px solid rgba(231,76,60,0.38); color: #e0776b; }
 .message-note   { background: rgba(201,165,66,0.09); border: 1px solid rgba(201,165,66,0.35); color: #d9c98f; }
 
+/* ── Leyenda de mobiliario ── */
+.object-legend {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.055);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.legend-group + .legend-group { margin-top: 11px; }
+
+.legend-group-title {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.lg-ok    { color: #4fbf7f; }
+.lg-block { color: #c98b7f; }
+
+.legend-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(94px, 1fr));
+  gap: 4px 8px;
+}
+
+.legend-item { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.legend-swatch { flex-shrink: 0; }
+
+.legend-name {
+  font-size: 0.72rem;
+  color: #8a857a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Instrucciones ── */
 .legend {
   background: rgba(255,255,255,0.02);

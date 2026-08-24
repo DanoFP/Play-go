@@ -5,6 +5,7 @@ import {
 } from './utils/puzzleGenerator.js';
 import GameBoard from './components/GameBoard.jsx';
 import SuspectList from './components/SuspectList.jsx';
+import ObjectLegend from './components/ObjectLegend.jsx';
 import './App.css';
 
 // Al colocar un sospechoso se descarta su fila y su columna enteras.
@@ -247,6 +248,8 @@ export default function App() {
               )}
             </div>
           )}
+
+          <ObjectLegend objects={puzzle.objects} />
 
           <div className="legend">
             <div className="legend-title">Cómo se juega</div>

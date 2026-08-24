@@ -386,7 +386,14 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
                 fill="transparent"
                 onClick={() => gameStatus === 'playing' && !blocked && onCellClick(r, c)}
                 style={{ cursor: gameStatus === 'playing' && !blocked ? 'pointer' : 'default' }}
-              />
+              >
+                {o && (
+                  <title>
+                    {OBJECT_TYPES[o.type].def}
+                    {blocked ? ' — bloquea la casilla' : ' — se puede estar encima'}
+                  </title>
+                )}
+              </rect>
             );
           })
         )}
