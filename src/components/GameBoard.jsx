@@ -6,14 +6,15 @@ const SUSPECT_COLORS = [
   '#3f8fd0', '#d9534f', '#3fae72', '#e0a33c', '#9b6fc4', '#3fb0ae',
 ];
 
+// El viewBox ya reescala en pantallas chicas, así que estos valores solo fijan
+// la proporción entre mobiliario y casilla; conviene que sean generosos.
 function cellSize(H, W) {
   const big = Math.max(H, W);
-  if (big <= 4) return 84;
-  if (big === 5) return 78;
-  if (big === 6) return 70;
-  if (big === 7) return 62;
-  if (big === 8) return 56;
-  return 50;
+  if (big <= 5) return 88;
+  if (big === 6) return 80;
+  if (big === 7) return 70;
+  if (big === 8) return 62;
+  return 56;
 }
 
 // ─── Texturas de suelo ──────────────────────────────────────────────────────
@@ -202,7 +203,10 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
 
   return (
     <div className="board-wrapper">
-      <svg width={bw + GUT} height={bh + GUT} viewBox={`0 0 ${bw + GUT} ${bh + GUT}`} className="board-svg">
+      {/* Sin ancho fijo: el viewBox deja que el tablero escale con el hueco
+          disponible, que es lo que hace falta en pantallas chicas. */}
+      <svg viewBox={`0 0 ${bw + GUT} ${bh + GUT}`} className="board-svg"
+           style={{ maxWidth: bw + GUT, aspectRatio: `${bw + GUT} / ${bh + GUT}` }}>
         <defs>
           {rooms.map(room => (
             <FloorPattern key={room.id} id={`floor-${room.id}`} type={room.floor} color={room.color} s={S} />

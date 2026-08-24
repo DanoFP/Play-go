@@ -1,12 +1,16 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
-  generatePuzzle, checkPlacement, isCorrectSolution, canPlaceAt, getHint,
+  checkPlacement, isCorrectSolution, canPlaceAt, getHint, findContradictions,
   SCENARIOS, DIFFICULTIES,
 } from './utils/puzzleGenerator.js';
+import usePuzzle from './hooks/usePuzzle.js';
 import GameBoard from './components/GameBoard.jsx';
 import SuspectList from './components/SuspectList.jsx';
 import ObjectLegend from './components/ObjectLegend.jsx';
+import Loader from './components/Loader.jsx';
 import './App.css';
+
+const STORE_KEY = 'murdoku.v1';
 
 // Colocar a alguien descarta su fila y su columna enteras.
 function computeAutoEliminated(placements, H, W) {
@@ -19,98 +23,130 @@ function computeAutoEliminated(placements, H, W) {
   return auto;
 }
 
-function peopleIds(puzzle) {
-  return [...puzzle.suspects.map(s => s.id), 'victim'];
-}
-
-function freshState(numSuspects, scenarioId, difficulty) {
-  const puzzle = generatePuzzle(numSuspects, scenarioId, difficulty);
-  const first = [...puzzle.suspects, { ...puzzle.victim, id: 'victim' }]
-    .sort((a, b) => a.step - b.step)[0];
-  return {
-    puzzle,
-    placements: Object.fromEntries(peopleIds(puzzle).map(id => [id, null])),
-    manualEliminated: new Set(),
-    activeSuspect: first.id,
-  };
-}
+const peopleOf = p => [...p.suspects, p.victim];
+const emptyPlacements = p => Object.fromEntries(peopleOf(p).map(x => [x.id, null]));
 
 const formatTime = sec =>
   `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY))?.stats || { solved: 0, best: {} }; }
+  catch { return { solved: 0, best: {} }; }
+}
+function saveStats(stats) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ stats })); } catch { /* modo privado */ }
+}
 
 export default function App() {
   const [numSuspects, setNumSuspects] = useState(4);
   const [scenarioId, setScenarioId]   = useState(SCENARIOS[0].id);
   const [difficulty, setDifficulty]   = useState('normal');
-  const [state, setState]             = useState(() => freshState(4, SCENARIOS[0].id, 'normal'));
-  const [gameStatus, setGameStatus]   = useState('playing');
-  const [message, setMessage]         = useState('');
-  const [hint, setHint]               = useState(null);
-  const [hintsUsed, setHintsUsed]     = useState(0);
-  const [seconds, setSeconds]         = useState(0);
 
-  const { puzzle, placements, manualEliminated, activeSuspect } = state;
-  const autoEliminated = computeAutoEliminated(placements, puzzle.H, puzzle.W);
-  const eliminated = new Set([...autoEliminated, ...manualEliminated]);
+  const { puzzle, loading, error, request } = usePuzzle({
+    numSuspects: 4, scenarioId: SCENARIOS[0].id, difficulty: 'normal',
+  });
+
+  // El historial es la fuente de verdad de las colocaciones: deshacer y rehacer
+  // se mueven por él, y el estado actual es siempre history[cursor].
+  const [history, setHistory] = useState([{}]);
+  const [cursor, setCursor]   = useState(0);
+  const [manualX, setManualX] = useState(new Set());
+  const [active, setActive]   = useState(null);
+
+  const [gameStatus, setGameStatus] = useState('playing');
+  const [message, setMessage]       = useState('');
+  const [hint, setHint]             = useState(null);
+  const [hintLevel, setHintLevel]   = useState(0);
+  const [seconds, setSeconds]       = useState(0);
+  const [stats, setStats]           = useState(loadStats);
+  const [copied, setCopied]         = useState(false);
 
   const hintTimer = useRef(null);
+  const placements = history[cursor];
 
+  // Cada puzzle nuevo reinicia la partida.
   useEffect(() => {
-    if (gameStatus !== 'playing') return;
-    const t = setInterval(() => setSeconds(s => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [gameStatus]);
-
-  useEffect(() => () => clearTimeout(hintTimer.current), []);
-
-  function reset(n = numSuspects, sid = scenarioId, diff = difficulty) {
-    setState(freshState(n, sid, diff));
+    if (!puzzle) return;
+    const empty = emptyPlacements(puzzle);
+    setHistory([empty]);
+    setCursor(0);
+    setManualX(new Set());
+    setActive(peopleOf(puzzle).sort((a, b) => a.step - b.step)[0].id);
     setGameStatus('playing');
     setMessage('');
     setHint(null);
-    setHintsUsed(0);
+    setHintLevel(0);
     setSeconds(0);
+    setCopied(false);
+  }, [puzzle]);
+
+  useEffect(() => {
+    if (gameStatus !== 'playing' || loading || !puzzle) return;
+    const t = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [gameStatus, loading, puzzle]);
+
+  useEffect(() => () => clearTimeout(hintTimer.current), []);
+
+  const contradictions = useMemo(
+    () => (puzzle && gameStatus === 'playing' ? findContradictions(puzzle, placements) : []),
+    [puzzle, placements, gameStatus]
+  );
+
+  function newCase(over = {}) {
+    request({
+      numSuspects: over.numSuspects ?? numSuspects,
+      scenarioId:  over.scenarioId  ?? scenarioId,
+      difficulty:  over.difficulty  ?? difficulty,
+      seed: over.seed ?? null,
+    });
+  }
+
+  function commit(next) {
+    setHistory(h => [...h.slice(0, cursor + 1), next]);
+    setCursor(c => c + 1);
   }
 
   const handleCellClick = useCallback((row, col) => {
-    if (gameStatus !== 'playing') return;
+    if (gameStatus !== 'playing' || !puzzle) return;
+    const k = `${row},${col}`;
+    const occupant = Object.entries(placements).find(([, p]) => p && p.row === row && p.col === col);
 
-    setState(prev => {
-      const k = `${row},${col}`;
-      const manual = new Set(prev.manualEliminated);
-      const next = { ...prev.placements };
-
-      const occupant = Object.entries(next).find(([, p]) => p && p.row === row && p.col === col);
-
-      if (prev.activeSuspect) {
-        if (occupant && occupant[0] === prev.activeSuspect) {
-          next[prev.activeSuspect] = null;
-          return { ...prev, placements: next };
-        }
-        if (occupant) return prev;
-        if (!canPlaceAt(prev.puzzle, row, col)) return prev;
-
-        next[prev.activeSuspect] = { row, col };
-        if (!checkPlacement(prev.puzzle, next).valid) return prev;
-        manual.delete(k);
-        return { ...prev, placements: next, manualEliminated: manual };
+    if (active) {
+      if (occupant && occupant[0] === active) {
+        commit({ ...placements, [active]: null });
+        return;
       }
+      if (occupant) return;
+      if (!canPlaceAt(puzzle, row, col)) return;
+      const next = { ...placements, [active]: { row, col } };
+      if (!checkPlacement(puzzle, next).valid) return;
+      setManualX(s => { const n = new Set(s); n.delete(k); return n; });
+      commit(next);
 
-      if (occupant) return prev;
-      manual.has(k) ? manual.delete(k) : manual.add(k);
-      return { ...prev, manualEliminated: manual };
-    });
-  }, [gameStatus]);
+      // Pasar automáticamente al siguiente de la cadena que falte.
+      const pending = peopleOf(puzzle)
+        .filter(p => p.id !== active && !next[p.id])
+        .sort((a, b) => a.step - b.step);
+      setActive(pending.length ? pending[0].id : null);
+      return;
+    }
 
-  function handleSelectSuspect(id) {
-    setState(prev => ({ ...prev, activeSuspect: prev.activeSuspect === id ? null : id }));
-  }
+    if (occupant) return;
+    setManualX(s => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  }, [gameStatus, puzzle, placements, active, cursor]);
 
   function handleCheck() {
     if (isCorrectSolution(puzzle, placements)) {
       setGameStatus('won');
       const name = puzzle.suspects.find(s => s.id === puzzle.murderer)?.name;
       setMessage(`Caso resuelto en ${formatTime(seconds)}. El asesino es ${name}.`);
+      const bkey = `${numSuspects}-${puzzle.difficulty}`;
+      const next = {
+        solved: stats.solved + 1,
+        best: { ...stats.best, [bkey]: Math.min(stats.best[bkey] ?? Infinity, seconds) },
+      };
+      setStats(next); saveStats(next);
     } else {
       setMessage('Esa reconstrucción no encaja con las declaraciones. Revisá las pistas.');
     }
@@ -122,28 +158,68 @@ export default function App() {
     setMessage(`El asesino era ${name}, que compartía habitación con ${puzzle.victim.name}.`);
   }
 
-  // La pista respeta la cadena: señala a quien toca deducir ahora, no a alguien
-  // que todavía no se puede razonar.
+  // Las pistas van por niveles: primero a quién le toca, después su habitación,
+  // y solo al tercer pedido la casilla. Pedir ayuda deja de ser rendirse.
   function handleHint() {
-    const who = getHint(puzzle, placements);
-    if (!who) return;
-    setHint({ row: who.row, col: who.col });
-    setHintsUsed(n => n + 1);
-    setMessage(`Pista: ${who.name} es quien toca ahora, y estaba en la casilla marcada.`);
-    clearTimeout(hintTimer.current);
-    hintTimer.current = setTimeout(() => setHint(null), 4000);
+    const level = hintLevel + 1;
+    const h = getHint(puzzle, placements, level);
+    if (!h) return;
+    setHintLevel(level);
+    setMessage(h.text);
+    setHint(h.cell);
+    if (h.cell) {
+      clearTimeout(hintTimer.current);
+      hintTimer.current = setTimeout(() => setHint(null), 5000);
+    }
   }
 
-  const ids = peopleIds(puzzle);
+  async function shareCase() {
+    // El escenario forma parte de la identidad del caso: sin él la semilla
+    // reproduciría el mismo plano pero en otro edificio.
+    const url = `${location.origin}${location.pathname}`
+      + `?caso=${puzzle.seed}&s=${numSuspects}&d=${puzzle.difficulty}&e=${puzzle.scenario.id}`;
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { setMessage(`Caso #${puzzle.seed}`); }
+  }
+
+  // Un caso compartido por URL se carga al abrir.
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    const seed = Number(q.get('caso'));
+    if (!seed) return;
+    const n = Number(q.get('s')) || 4;
+    const d = DIFFICULTIES[q.get('d')] ? q.get('d') : 'normal';
+    const e = SCENARIOS.some(s => s.id === q.get('e')) ? q.get('e') : null;
+    setNumSuspects(n); setDifficulty(d);
+    if (e) setScenarioId(e);
+    request({ numSuspects: n, scenarioId: e, difficulty: d, seed });
+  }, []);
+
+  if (error) {
+    return (
+      <div className="app">
+        <div className="message message-reveal" style={{ marginTop: 40 }}>
+          No se pudo generar el caso: {error}
+          <button className="btn btn-new" onClick={() => newCase()}>Reintentar</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!puzzle) return <Loader full />;
+
+  const ids = peopleOf(puzzle).map(p => p.id);
   const placedCount = ids.filter(id => placements[id]).length;
   const allPlaced = placedCount === ids.length;
   const carved = puzzle.live.size < puzzle.H * puzzle.W;
+  const bestKey = `${numSuspects}-${puzzle.difficulty}`;
+  const best = stats.best[bestKey];
 
   return (
     <div className="app">
       <header className="header">
         <div className="case-label">
-          Expediente Murdoku · planta {puzzle.H}×{puzzle.W}{carved ? ' irregular' : ''}
+          Caso #{puzzle.seed} · planta {puzzle.H}×{puzzle.W}{carved ? ' irregular' : ''}
         </div>
         <h1 className="title">
           <span className="title-icon">{puzzle.scenario.icon}</span> {puzzle.scenario.name}
@@ -159,7 +235,8 @@ export default function App() {
           <div className="chip-row">
             {SCENARIOS.map(s => (
               <button key={s.id} className={`chip ${scenarioId === s.id ? 'chip-on' : ''}`}
-                      onClick={() => { setScenarioId(s.id); reset(numSuspects, s.id, difficulty); }}
+                      disabled={loading}
+                      onClick={() => { setScenarioId(s.id); newCase({ scenarioId: s.id }); }}
                       title={s.name}>
                 <span className="chip-icon">{s.icon}</span>
                 <span className="chip-text">{s.name}</span>
@@ -174,7 +251,8 @@ export default function App() {
             <div className="chip-row">
               {[3, 4, 5, 6].map(n => (
                 <button key={n} className={`chip chip-sm ${numSuspects === n ? 'chip-on' : ''}`}
-                        onClick={() => { setNumSuspects(n); reset(n, scenarioId, difficulty); }}>
+                        disabled={loading}
+                        onClick={() => { setNumSuspects(n); newCase({ numSuspects: n }); }}>
                   {n}
                 </button>
               ))}
@@ -186,42 +264,79 @@ export default function App() {
             <div className="chip-row">
               {Object.entries(DIFFICULTIES).map(([k, d]) => (
                 <button key={k} className={`chip chip-sm ${difficulty === k ? 'chip-on' : ''}`}
-                        onClick={() => { setDifficulty(k); reset(numSuspects, scenarioId, k); }}>
+                        disabled={loading}
+                        onClick={() => { setDifficulty(k); newCase({ difficulty: k }); }}>
                   {d.label}
                 </button>
               ))}
             </div>
           </div>
 
-          <button className="btn btn-new" onClick={() => reset()}>Caso nuevo</button>
+          <button className="btn btn-new" onClick={() => newCase()} disabled={loading}>
+            Caso nuevo
+          </button>
+          <button className="btn btn-ghost" onClick={shareCase} disabled={loading}>
+            {copied ? '¡Copiado!' : 'Compartir caso'}
+          </button>
         </div>
       </div>
 
       <div className="statusbar">
         <span className="stat"><span className="stat-k">Tiempo</span> {formatTime(seconds)}</span>
         <span className="stat"><span className="stat-k">Colocados</span> {placedCount}/{ids.length}</span>
-        <span className="stat"><span className="stat-k">Pistas</span> {hintsUsed}</span>
         <span className="stat"><span className="stat-k">Pasos</span> {puzzle.depth}</span>
+        {best !== undefined && (
+          <span className="stat"><span className="stat-k">Mejor</span> {formatTime(best)}</span>
+        )}
+        <span className="stat"><span className="stat-k">Resueltos</span> {stats.solved}</span>
         <span className="stat stat-diff">{DIFFICULTIES[puzzle.difficulty].label}</span>
       </div>
 
       <div className="game-area">
-        <GameBoard
-          puzzle={puzzle}
-          userPlacements={placements}
-          eliminated={eliminated}
-          onCellClick={handleCellClick}
-          gameStatus={gameStatus}
-          hint={hint}
-        />
+        <div className="board-column">
+          {loading && <Loader />}
+          {!loading && (
+            <GameBoard
+              puzzle={puzzle}
+              userPlacements={placements}
+              eliminated={new Set([...computeAutoEliminated(placements, puzzle.H, puzzle.W), ...manualX])}
+              onCellClick={handleCellClick}
+              gameStatus={gameStatus}
+              hint={hint}
+            />
+          )}
+
+          <div className="undo-row">
+            <button className="btn btn-ghost" onClick={() => setCursor(c => Math.max(0, c - 1))}
+                    disabled={cursor === 0 || gameStatus !== 'playing'}>
+              ↶ Deshacer
+            </button>
+            <button className="btn btn-ghost" onClick={() => setCursor(c => Math.min(history.length - 1, c + 1))}
+                    disabled={cursor >= history.length - 1 || gameStatus !== 'playing'}>
+              Rehacer ↷
+            </button>
+          </div>
+
+          {contradictions.length > 0 && (
+            <div className="contradictions">
+              <div className="contra-title">✕ No encaja con {contradictions.length === 1 ? 'una declaración' : `${contradictions.length} declaraciones`}</div>
+              {contradictions.slice(0, 4).map((c, i) => (
+                <div key={i} className="contra-item">
+                  <strong>{c.name}:</strong> «{c.text}»
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="side-panel">
           <SuspectList
             puzzle={puzzle}
             userPlacements={placements}
-            activeSuspect={activeSuspect}
-            onSelectSuspect={handleSelectSuspect}
+            activeSuspect={active}
+            onSelectSuspect={id => setActive(a => (a === id ? null : id))}
             gameStatus={gameStatus}
+            contradictions={contradictions}
           />
 
           {gameStatus === 'playing' && (
@@ -230,7 +345,9 @@ export default function App() {
                       title={!allPlaced ? 'Colocá a todos primero' : ''}>
                 Resolver caso
               </button>
-              <button className="btn btn-hint" onClick={handleHint}>Pista</button>
+              <button className="btn btn-hint" onClick={handleHint}>
+                Pista {hintLevel > 0 && `(${hintLevel}/3)`}
+              </button>
               <button className="btn btn-reveal" onClick={handleReveal}>Rendirse</button>
             </div>
           )}
@@ -239,7 +356,7 @@ export default function App() {
             <div className={`message message-${gameStatus === 'won' ? 'win' : gameStatus === 'revealed' ? 'reveal' : 'note'}`}>
               <span>{message}</span>
               {(gameStatus === 'won' || gameStatus === 'revealed') && (
-                <button className="btn btn-new" onClick={() => reset()}>Caso nuevo</button>
+                <button className="btn btn-new" onClick={() => newCase()}>Caso nuevo</button>
               )}
             </div>
           )}
@@ -252,7 +369,7 @@ export default function App() {
               <li>Las fichas están <strong>en orden de deducción</strong>: la 1 sale con su
                   propia declaración, y cada siguiente se abre con las anteriores.</li>
               <li>Cada persona ocupa una <strong>fila y una columna únicas</strong>.</li>
-              <li>El mobiliario con trama <strong>bloquea</strong> la casilla: nadie puede estar ahí.</li>
+              <li>El mobiliario con trama <strong>bloquea</strong> la casilla.</li>
               <li>Al colocar a alguien, su fila y columna se tachan solas.</li>
               <li>Sin nadie seleccionado, el click marca o desmarca un descarte ✕.</li>
               <li>El asesino es quien comparte habitación con la víctima.</li>

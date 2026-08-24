@@ -3,13 +3,13 @@
 // Comprueba las invariantes estructurales, la cadena de deducción y —lo más
 // importante— reverifica la unicidad de la solución por fuerza bruta, con una
 // enumeración independiente del solver que usa el generador.
-import { generatePuzzle, SCENARIOS, DIFFICULTIES } from '../src/utils/puzzleGenerator.js';
+import { generatePuzzle, findContradictions, SCENARIOS, DIFFICULTIES } from '../src/utils/puzzleGenerator.js';
 import { bruteForce } from './bruteforce.mjs';
 
 const K = (r, c) => `${r},${c}`;
 
 let total = 0, bad = 0;
-const shapes = new Map(), depths = [], anchors = [];
+const shapes = new Map(), depths = [], rungs = [];
 const t0 = Date.now();
 
 for (const diff of Object.keys(DIFFICULTIES)) {
@@ -23,7 +23,7 @@ for (const diff of Object.keys(DIFFICULTIES)) {
 
       shapes.set(`${p.H}x${p.W}${p.live.size < p.H * p.W ? ' recortada' : ''}`,
                  (shapes.get(`${p.H}x${p.W}${p.live.size < p.H * p.W ? ' recortada' : ''}`) || 0) + 1);
-      depths.push(p.depth); anchors.push(p.anchors);
+      depths.push(p.depth); rungs.push(p.rungs / p.P);
 
       // 1. min(H,W) === P
       if (Math.min(p.H, p.W) !== p.P) { console.log(`✗ ${tag}: min(H,W)=${Math.min(p.H,p.W)} != P=${p.P}`); bad++; continue; }
@@ -64,12 +64,28 @@ for (const diff of Object.keys(DIFFICULTIES)) {
       const sharers = p.suspects.filter(s => s.roomId === p.victim.roomId);
       if (sharers.length !== 1 || sharers[0].id !== p.murderer) { console.log(`✗ ${tag}: asesino mal determinado (${sharers.length} comparten)`); bad++; continue; }
 
-      // 7. LA CADENA: hay al menos un ancla y el orden de las fichas es creciente
-      if (p.anchors < 1) { console.log(`✗ ${tag}: sin ancla`); bad++; continue; }
+      // 7. LA CADENA: un único punto de partida y fichas en orden creciente
+      const allSteps = people.map(s => s.step).sort((a,b)=>a-b);
+      if (allSteps.join(',') !== [...Array(p.P).keys()].map(i=>i+1).join(',')) {
+        console.log(`✗ ${tag}: los pasos no son 1..${p.P} (${allSteps})`); bad++; continue;
+      }
       const steps = p.suspects.map(s => s.step);
       if (steps.some((v, i) => i > 0 && v < steps[i-1])) { console.log(`✗ ${tag}: fichas desordenadas ${steps}`); bad++; continue; }
+      if (p.depth < 2) { console.log(`✗ ${tag}: sin cadena (depth ${p.depth})`); bad++; continue; }
 
-      // 8. unicidad por fuerza bruta
+      // 8. la solución correcta no dispara ninguna contradicción, y una
+      //    colocación deliberadamente mal sí la dispara
+      const good = Object.fromEntries(people.map(s => [s.id, { row: s.row, col: s.col }]));
+      if (findContradictions(p, good).length) { console.log(`✗ ${tag}: la solución correcta se marca como contradictoria`); bad++; continue; }
+
+      // 9. la semilla reproduce el mismo caso
+      const again = generatePuzzle(n, sc.id, diff, p.seed);
+      if (JSON.stringify(again.suspects.map(s=>[s.name,s.row,s.col])) !==
+          JSON.stringify(p.suspects.map(s=>[s.name,s.row,s.col]))) {
+        console.log(`✗ ${tag}: la semilla ${p.seed} no reproduce el caso`); bad++; continue;
+      }
+
+      // 10. unicidad por fuerza bruta
       const sols = bruteForce(p);
       if (sols.length !== 1) { console.log(`✗ ${tag}: ${sols.length} soluciones`); bad++; continue; }
       const ok = people.every(x => sols[0][0] && sols[0].some(s => s.row === x.row && s.col === x.col));
@@ -83,5 +99,5 @@ console.log('\nFormas de planta generadas:');
 [...shapes.entries()].sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => console.log(`  ${String(v).padStart(3)}×  ${k}`));
 const avg = a => (a.reduce((s,x)=>s+x,0)/a.length).toFixed(1);
 console.log(`\nProfundidad de deducción: media ${avg(depths)}, máx ${Math.max(...depths)}`);
-console.log(`Anclas por puzzle: media ${avg(anchors)}, mín ${Math.min(...anchors)}`);
+console.log(`Calidad de la escalera: media ${(avg(rungs)*100)|0}% de escalones distintos`);
 process.exit(bad ? 1 : 0);

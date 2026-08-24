@@ -4,7 +4,7 @@ import { SUSPECT_COLORS } from './GameBoard.jsx';
 // fijando: la primera se resuelve con su propia declaración y cada siguiente
 // se abre con lo que dejaron las anteriores. El número lo hace explícito.
 
-function Card({ person, index, color, isVictim, isActive, isMurderer, placed, showSolution, onClick, clickable }) {
+function Card({ person, index, color, isVictim, isActive, isMurderer, placed, showSolution, onClick, clickable, conflict }) {
   return (
     <div
       className={[
@@ -12,6 +12,7 @@ function Card({ person, index, color, isVictim, isActive, isMurderer, placed, sh
         isActive ? 'suspect-active' : '',
         isMurderer ? 'suspect-murderer' : '',
         placed && !showSolution ? 'suspect-placed' : '',
+        conflict ? 'suspect-conflict' : '',
       ].join(' ')}
       onClick={clickable ? onClick : undefined}
       style={{ '--accent': color, cursor: clickable ? 'pointer' : 'default' }}
@@ -42,7 +43,9 @@ function Card({ person, index, color, isVictim, isActive, isMurderer, placed, sh
         </div>
 
         <ul className="clue-list">
-          {person.clues.map((c, k) => <li key={k} className="suspect-clue">{c}</li>)}
+          {person.clues.map((c, k) => (
+            <li key={k} className={`suspect-clue ${conflict?.has(c) ? 'clue-broken' : ''}`}>{c}</li>
+          ))}
         </ul>
 
         {placed && !showSolution && (
@@ -56,10 +59,17 @@ function Card({ person, index, color, isVictim, isActive, isMurderer, placed, sh
   );
 }
 
-export default function SuspectList({ puzzle, userPlacements, activeSuspect, onSelectSuspect, gameStatus }) {
+export default function SuspectList({ puzzle, userPlacements, activeSuspect, onSelectSuspect, gameStatus, contradictions = [] }) {
   const { suspects, victim, murderer } = puzzle;
   const showSolution = gameStatus === 'won' || gameStatus === 'revealed';
   const playing = gameStatus === 'playing';
+
+  // Qué declaración concreta rompe cada persona, para tacharla en su ficha.
+  const broken = new Map();
+  for (const c of contradictions) {
+    if (!broken.has(c.personId)) broken.set(c.personId, new Set());
+    broken.get(c.personId).add(c.text);
+  }
 
   // La víctima se intercala en la lista en su propio lugar de la secuencia.
   const people = [
@@ -83,6 +93,7 @@ export default function SuspectList({ puzzle, userPlacements, activeSuspect, onS
           placed={userPlacements[p.id]}
           showSolution={showSolution}
           clickable={playing}
+          conflict={broken.get(p.id)}
           onClick={() => onSelectSuspect(p.id)}
         />
       ))}

@@ -1,6 +1,9 @@
+import { makeIndex, evalClue } from '../src/utils/puzzleGenerator.js';
+
 // Fuerza bruta con poda incremental. Independiente del solver del generador:
 // aquí se enumera y se comprueba, sin propagación de dominios ni heurísticas.
 export function bruteForce(p, limit = 2) {
+  const board = makeIndex(p);
   const cells = [];
   for (const k of p.live) {
     if (p.blockedSet.has(k)) continue;
@@ -11,10 +14,10 @@ export function bruteForce(p, limit = 2) {
   const pos = new Array(p.P).fill(null);
   const usedR = new Set(), usedC = new Set();
 
-  // Una restricción es comprobable cuando su dueño y sus referencias ya están
+  // Una pista es comprobable cuando su dueño y sus referencias ya están
   // puestos; comprobarla en ese momento es lo que hace viable la enumeración.
   const byLevel = Array.from({ length: p.P }, (_, i) =>
-    p.constraints.filter(cl => Math.max(cl.owner, ...cl.refs) === i));
+    p.clues.filter(cl => Math.max(cl.owner, ...cl.refs) === i));
 
   (function rec(i) {
     if (sols.length >= limit) return;
@@ -22,7 +25,7 @@ export function bruteForce(p, limit = 2) {
     for (const cell of cells) {
       if (usedR.has(cell.row) || usedC.has(cell.col)) continue;
       pos[i] = cell; usedR.add(cell.row); usedC.add(cell.col);
-      if (byLevel[i].every(cl => cl.test(pos))) rec(i + 1);
+      if (byLevel[i].every(cl => evalClue(cl, pos, board))) rec(i + 1);
       usedR.delete(cell.row); usedC.delete(cell.col); pos[i] = null;
       if (sols.length >= limit) return;
     }

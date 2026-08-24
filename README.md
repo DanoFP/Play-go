@@ -26,9 +26,15 @@ dominio con las pistas propias, elimina la fila y la columna de quien ya está
 fijado, y aplica consistencia de arco a las pistas relativas— y devuelve en qué
 ronda queda fijada cada persona. Con eso el generador garantiza:
 
-- Al menos un **ancla**: alguien deducible solo con su propia ficha.
-- Una **cadena**: las fichas se ordenan por esa secuencia, así la primera es la
-  más fácil y cada una se abre con lo que resolvieron las anteriores.
+- **Un único punto de partida**: exactamente una persona sale con su ficha
+  sola, así "la primera es la más fácil" es literal y no un empate.
+- Una **cadena**: las fichas se ordenan y numeran por esa secuencia, y cada una
+  se abre con lo que resolvieron las anteriores.
+
+Una escalera perfecta —cada persona en su propia ronda— es demasiado rara para
+exigirla como filtro: la probabilidad cae a plomo al crecer el número de
+personas. En su lugar se generan varios casos válidos y se devuelve el de mejor
+escalera, que en la práctica deja el 90% de los escalones distintos.
 
 La selección no puede fallar a mitad de camino: añadir pistas solo recorta
 dominios, así que si el pool completo no basta se descarta el tablero de
@@ -43,9 +49,11 @@ las pistas redundantes.
 | Media | junto a un mueble, al lado de alguien, misma habitación, en una esquina |
 | Deductiva | a la izquierda/derecha/norte/sur de alguien, a N casillas, negaciones, pegado a una pared |
 
-La dificultad decide qué fuerzas entran al sorteo y cuánta profundidad de
-deducción se admite: **Fácil** usa pistas directas y exige al menos dos anclas,
-**Difícil** solo deductivas y relacionales, con cadenas más largas.
+La dificultad decide qué fuerzas entran al sorteo. La persona que abre el caso
+recibe pistas de cualquier fuerza; el resto, solo las que permita la dificultad.
+En **Difícil** eso significa un arranque claro y todo lo demás relacional —si
+nadie pudiera tener una pista fuerte no habría punto de partida y el caso solo
+se resolvería adivinando.
 
 El orden se corresponde con la estrategia recomendada para el Murdoku original:
 resolver primero habitación fija, fila/columna fija y objeto único, y dejar las
@@ -72,5 +80,18 @@ independiente del solver que usa el generador.
 Hay además un smoke test de la interfaz (`npm run test:ui`) que necesita
 Playwright y un `vite preview` en el puerto 4200.
 
-Stack: React 18 + Vite. El tablero se dibuja en SVG (mobiliario vectorial,
-texturas de suelo por habitación, paredes con puertas).
+## Cómo está hecho
+
+Stack: React 18 + Vite, sin más dependencias en runtime.
+
+- El tablero se dibuja en **SVG**: mobiliario vectorial, texturas de suelo por
+  habitación, paredes que siguen el contorno real de la planta, y `viewBox` para
+  que escale en pantallas chicas.
+- La generación corre en un **Web Worker**: buscar un caso resoluble por
+  deducción pura puede llevar segundos, y bloquear la UI no era aceptable.
+  Mientras tanto se muestra un loader.
+- Las pistas son **datos puros** (`{owner, refs, type, text, target}`), sin
+  closures. Por eso el puzzle atraviesa `structuredClone` hacia el worker, y el
+  hilo principal puede reevaluarlas para avisar de contradicciones en vivo.
+- Toda la aleatoriedad pasa por un PRNG sembrado, así que **cada caso tiene
+  número** y se puede compartir por enlace.

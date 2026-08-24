@@ -158,7 +158,7 @@ body {
 .side-panel {
   flex: 1;
   min-width: 260px;
-  max-width: 340px;
+  max-width: 390px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -347,6 +347,80 @@ body {
 .message-reveal { background: rgba(231,76,60,0.09);  border: 1px solid rgba(231,76,60,0.38); color: #e0776b; }
 .message-note   { background: rgba(201,165,66,0.09); border: 1px solid rgba(201,165,66,0.35); color: #d9c98f; }
 
+/* ── Loader ── */
+.loader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 26px 22px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(201,165,66,0.18);
+  border-radius: 8px;
+  min-width: 300px;
+}
+.loader-full { margin: 60px auto; max-width: 460px; }
+
+.loader-glass { flex-shrink: 0; animation: glass-sweep 2.4s ease-in-out infinite; }
+@keyframes glass-sweep {
+  0%, 100% { transform: rotate(-9deg) translateX(-2px); }
+  50%      { transform: rotate(9deg) translateX(2px); }
+}
+.loader-scan { animation: scan 1.6s ease-out infinite; transform-origin: 27px 27px; }
+@keyframes scan {
+  from { r: 3; opacity: 0.9; }
+  to   { r: 16; opacity: 0; }
+}
+
+.loader-title {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #c9a542;
+  margin-bottom: 7px;
+}
+.loader-steps { list-style: none; font-size: 0.78rem; color: #6f6b62; line-height: 1.6; }
+.loader-steps li { opacity: 0; animation: step-in 0.5s ease forwards; }
+@keyframes step-in { to { opacity: 1; } }
+
+/* ── Deshacer / rehacer ── */
+.board-column { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+.undo-row { display: flex; gap: 7px; }
+
+.btn-ghost {
+  background: rgba(255,255,255,0.03);
+  color: #8a857a;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.07); color: #c0bab0; }
+
+/* ── Contradicciones ── */
+.contradictions {
+  background: rgba(231,76,60,0.07);
+  border: 1px solid rgba(231,76,60,0.32);
+  border-radius: 8px;
+  padding: 10px 13px;
+  font-size: 0.78rem;
+  color: #c98b7f;
+  line-height: 1.5;
+}
+.contra-title {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #e0776b;
+  margin-bottom: 5px;
+}
+.contra-item { margin-top: 2px; }
+.contra-item strong { color: #e0968a; }
+
+.suspect-conflict {
+  border-color: rgba(231,76,60,0.45) !important;
+  background: rgba(231,76,60,0.07) !important;
+}
+.clue-broken { color: #d98d80 !important; text-decoration: line-through; }
+
 /* ── Leyenda de mobiliario ── */
 .object-legend {
   background: rgba(255,255,255,0.02);
@@ -405,9 +479,19 @@ body {
 .legend ul { padding-left: 15px; }
 .legend strong { color: #a09a8c; font-weight: 700; }
 
+@media (max-width: 900px) {
+  .game-area { flex-direction: column; align-items: stretch; }
+  .board-column { width: 100%; }
+  .side-panel { max-width: none; width: 100%; }
+}
+
 @media (max-width: 720px) {
-  .game-area { justify-content: center; }
-  .side-panel { max-width: none; }
+  .app { padding: 14px 10px 32px; }
   .chip-text { display: none; }
   .chip-icon { font-size: 1.1rem; }
+  .control-row { gap: 12px; }
+  .statusbar { gap: 12px; font-size: 0.72rem; padding: 8px 11px; }
+  .stat-diff { margin-left: 0; }
+  .action-group { flex-wrap: wrap; }
+  .btn-check { flex-basis: 100%; }
 }

@@ -148,24 +148,45 @@ const TIER = {
   notInRoom: 3, edge: 3, notEdge: 3, distance: 3, notSameRoomAs: 3,
 };
 
+//  `tiers` son las pistas que recibe la mayoría; `anchorTiers`, las que recibe
+//  la persona que abre el caso. Separarlas es lo que hace posible el difícil:
+//  si nadie puede tener una pista fuerte no hay punto de partida y el puzzle
+//  solo se resuelve adivinando. Un Murdoku difícil tiene un arranque claro y
+//  todo lo demás relacional, no un arranque imposible.
 export const DIFFICULTIES = {
-  facil:   { label: 'Fácil',   tiers: [1, 2],    minAnchors: 2, maxDepth: 3 },
-  normal:  { label: 'Normal',  tiers: [1, 2, 3], minAnchors: 1, maxDepth: 6 },
-  dificil: { label: 'Difícil', tiers: [2, 3],    minAnchors: 1, maxDepth: 99 },
+  facil:   { label: 'Fácil',   tiers: [1, 2],    anchorTiers: [1, 2]    },
+  normal:  { label: 'Normal',  tiers: [1, 2, 3], anchorTiers: [1, 2, 3] },
+  dificil: { label: 'Difícil', tiers: [2, 3],    anchorTiers: [1, 2, 3] },
 };
+
+// ─── Aleatoriedad sembrada ──────────────────────────────────────────────────
+//  Todo el generador consume este rng, así que un mismo número de caso produce
+//  siempre el mismo puzzle: se puede compartir y reproducir.
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+let rng = Math.random;
 
 // ─── Utilidades ─────────────────────────────────────────────────────────────
 
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
 
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const pick = arr => arr[Math.floor(rng() * arr.length)];
 const key  = (r, c) => `${r},${c}`;
 const manhattan = (a, b) => Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
 
@@ -221,8 +242,8 @@ function carveShape(H, W, P) {
     drop.push([r0, c0], [r0, c0 + 1], [r0 + 1, c0]);
   } else if (style === 'courtyard') {
     // Patio interior.
-    const r0 = 1 + Math.floor(Math.random() * (H - 3));
-    const c0 = 1 + Math.floor(Math.random() * (W - 3));
+    const r0 = 1 + Math.floor(rng() * (H - 3));
+    const c0 = 1 + Math.floor(rng() * (W - 3));
     drop.push([r0, c0], [r0, c0 + 1]);
   } else if (style === 'corners') {
     drop.push([0, 0], [H - 1, W - 1]);
@@ -406,8 +427,8 @@ function placeObjects(rooms, solution, live, H, W) {
   }
 
   const occSpots = shuffle([
-    ...solution.filter(() => Math.random() < 0.7),
-    ...free.filter(c => !taken.has(key(c.row, c.col))).filter(() => Math.random() < 0.3),
+    ...solution.filter(() => rng() < 0.7),
+    ...free.filter(c => !taken.has(key(c.row, c.col))).filter(() => rng() < 0.3),
   ]);
   const occTypes = shuffle(OCCUPIABLE);
   occSpots.forEach((cell, i) => {
@@ -419,65 +440,110 @@ function placeObjects(rooms, solution, live, H, W) {
   return objects;
 }
 
-// ─── Pistas candidatas ──────────────────────────────────────────────────────
-//  Todas son ciertas respecto de la solución. `test(pos)` las reevalúa sobre
-//  asignaciones hipotéticas, que es lo que usan el solver lógico y el contador.
+// ─── Pistas ─────────────────────────────────────────────────────────────────
+//  Una pista es DATO puro: {owner, refs, type, text, target?, value?}. No lleva
+//  closures, así que viaja al worker por structuredClone y el hilo principal
+//  puede reevaluarla para detectar contradicciones.
 
+// Índice consultable del tablero. `makeIndex` lo reconstruye a partir de un
+// puzzle ya serializado, para poder evaluar pistas fuera del generador.
+export function makeIndex(puzzle) {
+  const roomOf = new Map(), objOf = new Map();
+  for (const room of puzzle.rooms)
+    for (const c of room.cells) roomOf.set(key(c.row, c.col), room);
+  for (const o of puzzle.objects) objOf.set(key(o.row, o.col), o);
+  return {
+    live: puzzle.live,
+    rooms: puzzle.rooms,
+    roomAt: (r, c) => roomOf.get(key(r, c)) || null,
+    objAt:  (r, c) => objOf.get(key(r, c)) || null,
+  };
+}
+
+// `pos` es un array indexado por persona. Devuelve true si la pista todavía no
+// es evaluable (falta alguien), para poder usarla sobre estados parciales.
+export function evalClue(clue, pos, board) {
+  const me = pos[clue.owner];
+  if (!me) return true;
+  const openSides = p => neighbors(p.row, p.col, board.live).length;
+
+  switch (clue.type) {
+    case 'onObject': {
+      const o = board.objAt(me.row, me.col);
+      return !!o && o.type === clue.target;
+    }
+    case 'nextToObject':
+      return neighbors(me.row, me.col, board.live).some(n => {
+        const o = board.objAt(n.row, n.col);
+        return !!o && o.type === clue.target;
+      });
+    case 'inRoom':    return board.roomAt(me.row, me.col)?.id === clue.target;
+    case 'notInRoom': return board.roomAt(me.row, me.col)?.id !== clue.target;
+    case 'row':       return me.row === clue.value;
+    case 'col':       return me.col === clue.value;
+    case 'corner':    return openSides(me) <= 2;
+    case 'edge':      return openSides(me) < 4;
+    case 'notEdge':   return openSides(me) === 4;
+    default: break;
+  }
+
+  const other = pos[clue.refs[0]];
+  if (!other) return true;
+  switch (clue.type) {
+    case 'leftOf':     return me.col < other.col;
+    case 'rightOf':    return me.col > other.col;
+    case 'above':      return me.row < other.row;
+    case 'below':      return me.row > other.row;
+    case 'adjacentTo': return manhattan(me, other) === 1;
+    case 'distance':   return manhattan(me, other) === clue.value;
+    case 'sameRoomAs':
+      return board.roomAt(me.row, me.col)?.id === board.roomAt(other.row, other.col)?.id;
+    case 'notSameRoomAs':
+      return board.roomAt(me.row, me.col)?.id !== board.roomAt(other.row, other.col)?.id;
+    default: return true;
+  }
+}
+
+// Todas las candidatas son ciertas respecto de la solución.
 function candidateClues(i, solution, board, names, P, allowedTiers) {
   const { live } = board;
   const me = solution[i];
   const out = [];
 
-  const add = (type, text, refs, test) => {
+  const add = (type, text, refs, extra = {}) => {
     if (!allowedTiers.includes(TIER[type])) return;
-    out.push({ owner: i, type, text, refs, test });
+    out.push({ owner: i, type, text, refs, ...extra });
   };
 
   // ── Anclas y unarias ────────────────────────────────────────────────────
 
   const myObj = board.objAt(me.row, me.col);
-  if (myObj && OBJECT_TYPES[myObj.type].occupiable) {
-    const t = myObj.type;
-    add('onObject', OBJECT_TYPES[t].on, [], pos => {
-      const o = board.objAt(pos[i].row, pos[i].col);
-      return !!o && o.type === t;
-    });
-  }
+  if (myObj && OBJECT_TYPES[myObj.type].occupiable)
+    add('onObject', OBJECT_TYPES[myObj.type].on, [], { target: myObj.type });
 
   const nearTypes = new Set(
     neighbors(me.row, me.col, live).map(n => board.objAt(n.row, n.col)).filter(Boolean).map(o => o.type)
   );
-  for (const t of nearTypes) {
-    add('nextToObject', `Estaba junto a ${OBJECT_TYPES[t].indef}`, [], pos =>
-      neighbors(pos[i].row, pos[i].col, live).some(n => {
-        const o = board.objAt(n.row, n.col);
-        return !!o && o.type === t;
-      })
-    );
-  }
+  for (const t of nearTypes)
+    add('nextToObject', `Estaba junto a ${OBJECT_TYPES[t].indef}`, [], { target: t });
 
   const myRoom = board.roomAt(me.row, me.col);
-  add('inRoom', `Estaba en ${myRoom.name}`, [], pos =>
-    board.roomAt(pos[i].row, pos[i].col)?.id === myRoom.id);
+  add('inRoom', `Estaba en ${myRoom.name}`, [], { target: myRoom.id });
 
   for (const room of board.rooms) {
     if (room.id === myRoom.id) continue;
-    add('notInRoom', `No estaba en ${room.name}`, [], pos =>
-      board.roomAt(pos[i].row, pos[i].col)?.id !== room.id);
+    add('notInRoom', `No estaba en ${room.name}`, [], { target: room.id });
   }
 
-  add('row', `Estaba en la fila ${me.row + 1}`, [], pos => pos[i].row === me.row);
-  add('col', `Estaba en la columna ${me.col + 1}`, [], pos => pos[i].col === me.col);
+  add('row', `Estaba en la fila ${me.row + 1}`, [], { value: me.row });
+  add('col', `Estaba en la columna ${me.col + 1}`, [], { value: me.col });
 
-  // Borde y esquina se calculan sobre la planta real, no sobre el rectángulo:
+  // Rincón y pared se calculan sobre la planta real, no sobre el rectángulo:
   // una celda es de borde si le falta algún vecino vivo.
-  const openSides = (r, c) => neighbors(r, c, live).length;
-  const isEdge   = p => openSides(p.row, p.col) < 4;
-  const isCorner = p => openSides(p.row, p.col) <= 2;
-
-  if (isCorner(me)) add('corner', 'Estaba en un rincón del plano', [], pos => isCorner(pos[i]));
-  if (isEdge(me))   add('edge', 'Estaba pegado a una pared exterior', [], pos => isEdge(pos[i]));
-  else              add('notEdge', 'No estaba pegado a ninguna pared exterior', [], pos => !isEdge(pos[i]));
+  const sides = neighbors(me.row, me.col, live).length;
+  if (sides <= 2) add('corner', 'Estaba en un rincón del plano', []);
+  if (sides < 4)  add('edge', 'Estaba pegado a una pared exterior', []);
+  else            add('notEdge', 'No estaba pegado a ninguna pared exterior', []);
 
   // ── Relativas ───────────────────────────────────────────────────────────
 
@@ -486,25 +552,20 @@ function candidateClues(i, solution, board, names, P, allowedTiers) {
     const other = solution[j];
     const name = names[j];
 
-    if (me.col < other.col) add('leftOf',  `Estaba a la izquierda de ${name}`, [j], pos => pos[i].col < pos[j].col);
-    if (me.col > other.col) add('rightOf', `Estaba a la derecha de ${name}`,   [j], pos => pos[i].col > pos[j].col);
-    if (me.row < other.row) add('above',   `Estaba más al norte que ${name}`,  [j], pos => pos[i].row < pos[j].row);
-    if (me.row > other.row) add('below',   `Estaba más al sur que ${name}`,    [j], pos => pos[i].row > pos[j].row);
-
-    if (manhattan(me, other) === 1)
-      add('adjacentTo', `Estaba justo al lado de ${name}`, [j], pos => manhattan(pos[i], pos[j]) === 1);
+    if (me.col < other.col) add('leftOf',  `Estaba a la izquierda de ${name}`, [j]);
+    if (me.col > other.col) add('rightOf', `Estaba a la derecha de ${name}`,   [j]);
+    if (me.row < other.row) add('above',   `Estaba más al norte que ${name}`,  [j]);
+    if (me.row > other.row) add('below',   `Estaba más al sur que ${name}`,    [j]);
 
     const d = manhattan(me, other);
-    if (d >= 2 && d <= 4)
-      add('distance', `Estaba a ${d} casillas de ${name}`, [j], pos => manhattan(pos[i], pos[j]) === d);
+    if (d === 1) add('adjacentTo', `Estaba justo al lado de ${name}`, [j]);
+    if (d >= 2 && d <= 4) add('distance', `Estaba a ${d} casillas de ${name}`, [j], { value: d });
 
     const otherRoom = board.roomAt(other.row, other.col);
     if (otherRoom.id === myRoom.id)
-      add('sameRoomAs', `Compartía habitación con ${name}`, [j], pos =>
-        board.roomAt(pos[i].row, pos[i].col)?.id === board.roomAt(pos[j].row, pos[j].col)?.id);
+      add('sameRoomAs', `Compartía habitación con ${name}`, [j]);
     else
-      add('notSameRoomAs', `No compartía habitación con ${name}`, [j], pos =>
-        board.roomAt(pos[i].row, pos[i].col)?.id !== board.roomAt(pos[j].row, pos[j].col)?.id);
+      add('notSameRoomAs', `No compartía habitación con ${name}`, [j]);
   }
 
   return out;
@@ -530,7 +591,7 @@ function solveLogically(clues, board, P) {
   for (let i = 0; i < P; i++) {
     cand[i] = cand[i].filter(cell => {
       pos[i] = cell;
-      const ok = unary[i].every(cl => cl.test(pos));
+      const ok = unary[i].every(cl => evalClue(cl, pos, board));
       pos[i] = null;
       return ok;
     });
@@ -561,7 +622,7 @@ function solveLogically(clues, board, P) {
       const i = cl.owner, j = cl.refs[0];
       const compatible = (ci, cj) => {
         pos[i] = ci; pos[j] = cj;
-        const ok = cl.test(pos);
+        const ok = evalClue(cl, pos, board);
         pos[i] = null; pos[j] = null;
         return ok;
       };
@@ -633,12 +694,34 @@ export function canPlaceAt(puzzle, row, col) {
   return puzzle.live.has(key(row, col)) && !puzzle.blockedSet.has(key(row, col));
 }
 
-export function generatePuzzle(numSuspects = 3, scenarioId = null, difficulty = 'normal') {
+export function generatePuzzle(numSuspects = 3, scenarioId = null, difficulty = 'normal', seed = null) {
   const P = numSuspects + 1;                 // sospechosos + víctima
   const diff = DIFFICULTIES[difficulty] || DIFFICULTIES.normal;
-  const scenario = SCENARIOS.find(s => s.id === scenarioId) || pick(SCENARIOS);
 
-  for (let attempt = 0; attempt < 300; attempt++) {
+  // El caso queda identificado por su semilla: el mismo número reproduce
+  // exactamente el mismo puzzle, así se puede compartir.
+  const caseSeed = seed ?? (Math.floor(Math.random() * 0xFFFFFF) + 1);
+  rng = mulberry32(caseSeed);
+
+  // El tiro se consume siempre, haya escenario explícito o no: si solo se
+  // tirase en un caso, la misma semilla daría secuencias distintas según cómo
+  // se pidió el puzzle y el número de caso dejaría de identificarlo.
+  const rolled = pick(SCENARIOS);
+  const scenario = SCENARIOS.find(s => s.id === scenarioId) || rolled;
+
+  // Una escalera perfecta —cada persona deducible en su propia ronda— es
+  // demasiado rara para exigirla: la probabilidad cae a plomo al crecer P y la
+  // generación no termina. En su lugar se buscan varios puzzles válidos y se
+  // devuelve el de mejor escalera, saliendo antes si aparece una perfecta.
+  let best = null;
+  let found = 0;
+
+  // Con P grande una escalera perfecta es rarísima y buscarla dispara el
+  // tiempo, así que a partir de 6 personas se acepta un escalón de holgura.
+  const goodEnough = P <= 5 ? P : P - 1;
+  const wanted = P <= 5 ? 12 : 5;
+
+  for (let attempt = 0; attempt < 1500 && found < wanted; attempt++) {
     const { H, W } = chooseDimensions(P);
     const live = carveShape(H, W, P);
 
@@ -671,53 +754,97 @@ export function generatePuzzle(numSuspects = 3, scenarioId = null, difficulty = 
 
     // Conviene el pool completo: recortarlo hace que menos tableros admitan
     // resolución lógica y se descarten más, que sale más caro que evaluarlo.
+    // Una sola persona puede recibir pistas fuertes: es la que abrirá el caso.
+    const anchorIdx = Math.floor(rng() * P);
     const pools = [];
     for (let i = 0; i < P; i++)
-      pools.push(candidateClues(i, solution, board, names, P, diff.tiers));
+      pools.push(candidateClues(i, solution, board, names, P,
+                                i === anchorIdx ? diff.anchorTiers : diff.tiers));
 
     const chosen = selectClues(pools, board, P);
     if (!chosen) continue;
 
     const { resolvedAt, depth } = solveLogically(chosen.flat(), board, P);
-    const anchors = resolvedAt.filter(r => r === 1).length;
-    if (anchors < diff.minAnchors) continue;   // hace falta un punto de partida
-    if (depth > diff.maxDepth) continue;
-    if (depth < 2 && P > 3) continue;          // si todo es ancla no hay cadena
+
+    // Requisito duro: UN solo punto de partida. Exactamente una persona sale
+    // con su ficha sola, así "la primera es más fácil que las otras" es literal
+    // y no un empate presentado como secuencia. Y tiene que haber cadena.
+    if (resolvedAt.filter(r => r === 1).length !== 1) continue;
+    if (depth < 2) continue;
+
+    found++;
+    // Calidad de la escalera: cuántas rondas distintas hay. P = perfecta.
+    const rungs = new Set(resolvedAt).size;
+    if (!best || rungs > best.rungs) best = { resolvedAt, depth, rungs, chosen, board, solution,
+                                              rooms, objects, live, H, W, roomIdOf, victimPos,
+                                              victimRoomId, suspectNames, victimName };
+    if (rungs >= goodEnough) break;
+    continue;
+  }
+
+  if (best) {
+    const { resolvedAt, depth, chosen, solution, rooms, objects, live, H, W,
+            roomIdOf, victimPos, victimRoomId, suspectNames, victimName } = best;
+
+    const order = [...Array(P).keys()].sort((a, b) => resolvedAt[a] - resolvedAt[b]);
+    const stepOf = new Map(order.map((idx, pos) => [idx, pos + 1]));
 
     const suspects = suspectNames.map((name, i) => ({
-      id: `s${i}`, name,
+      id: `s${i}`, idx: i, name,
       row: solution[i].row, col: solution[i].col,
       roomId: roomIdOf.get(key(solution[i].row, solution[i].col)),
       clues: chosen[i].map(c => c.text),
-      step: resolvedAt[i],
+      step: stepOf.get(i),
     }));
-
-    // Las fichas se ordenan por la secuencia en que la lógica las va fijando:
-    // la primera es deducible sola, cada siguiente se abre con las anteriores.
     suspects.sort((a, b) => a.step - b.step);
-    suspects.forEach((s, i) => { s.order = i + 1; });
 
     const murderer = suspects.find(s => s.roomId === victimRoomId);
 
     return {
       H, W, P, live, rooms, objects, suspects, scenario, difficulty,
-      depth, anchors,
-      constraints: chosen.flat(),
+      depth, rungs: best.rungs, seed: caseSeed,
+      clues: chosen.flat(),          // datos puros: viajan al worker y se
+                                     // reevalúan para detectar contradicciones
       blockedSet: new Set(objects.filter(o => !OBJECT_TYPES[o.type].occupiable).map(o => key(o.row, o.col))),
       victim: {
+        id: 'victim', idx: P - 1,
         name: victimName,
         row: victimPos.row, col: victimPos.col,
         roomId: victimRoomId,
         clues: chosen[P - 1].map(c => c.text),
-        step: resolvedAt[P - 1],
+        step: stepOf.get(P - 1),
       },
       murderer: murderer.id,
     };
   }
 
-  if (difficulty === 'dificil') return generatePuzzle(numSuspects, scenarioId, 'normal');
-  if (difficulty === 'normal')  return generatePuzzle(numSuspects, scenarioId, 'facil');
-  return generatePuzzle(numSuspects, null, 'facil');
+  // Sin cadena estricta a esta altura: se afloja la dificultad antes de rendirse.
+  if (difficulty === 'dificil') return generatePuzzle(numSuspects, scenarioId, 'normal', caseSeed);
+  if (difficulty === 'normal')  return generatePuzzle(numSuspects, scenarioId, 'facil', caseSeed);
+  return generatePuzzle(numSuspects, null, 'facil', caseSeed + 1);
+}
+
+// ─── Utilidades de partida ──────────────────────────────────────────────────
+
+// Devuelve las declaraciones que el estado actual del jugador ya contradice.
+// Solo mira pistas cuyos participantes están todos colocados, así que no
+// delata nada: informa de un choque que ya se puede comprobar a mano.
+export function findContradictions(puzzle, userPlacements) {
+  const board = makeIndex(puzzle);
+  const people = [...puzzle.suspects, puzzle.victim];
+  const pos = new Array(puzzle.P).fill(null);
+  for (const p of people) pos[p.idx] = userPlacements[p.id] || null;
+
+  const byIdx = new Map(people.map(p => [p.idx, p]));
+  const out = [];
+  for (const clue of puzzle.clues) {
+    if (!pos[clue.owner]) continue;
+    if (clue.refs.some(r => !pos[r])) continue;
+    if (!evalClue(clue, pos, board)) {
+      out.push({ personId: byIdx.get(clue.owner).id, name: byIdx.get(clue.owner).name, text: clue.text });
+    }
+  }
+  return out;
 }
 
 export function checkPlacement(puzzle, userPlacements) {
@@ -730,24 +857,40 @@ export function checkPlacement(puzzle, userPlacements) {
 }
 
 export function isCorrectSolution(puzzle, userPlacements) {
-  const people = [...puzzle.suspects, puzzle.victim];
-  return people.every(s => {
-    const p = userPlacements[s.id || 'victim'];
+  return [...puzzle.suspects, puzzle.victim].every(s => {
+    const p = userPlacements[s.id];
     return p && p.row === s.row && p.col === s.col;
   });
 }
 
-// Devuelve la persona sin colocar (o mal colocada) que antes toca según la
-// cadena de deducción, para que la pista respete el orden del puzzle.
-export function getHint(puzzle, userPlacements) {
-  const people = [
-    ...puzzle.suspects,
-    { ...puzzle.victim, id: 'victim' },
-  ];
-  const pending = people.filter(s => {
+// La persona que antes toca según la cadena, entre las que faltan o están mal.
+export function nextPending(puzzle, userPlacements) {
+  const pending = [...puzzle.suspects, puzzle.victim].filter(s => {
     const p = userPlacements[s.id];
     return !p || p.row !== s.row || p.col !== s.col;
   });
   if (!pending.length) return null;
   return pending.sort((a, b) => a.step - b.step)[0];
+}
+
+// Pistas graduadas: cada nivel dice algo más, para que pedir ayuda no equivalga
+// a rendirse. Nivel 3 ya señala la casilla.
+export function getHint(puzzle, userPlacements, level) {
+  const who = nextPending(puzzle, userPlacements);
+  if (!who) return null;
+
+  if (level <= 1) {
+    return {
+      text: `Toca deducir a ${who.name} (ficha ${who.step}). Con lo que ya está colocado, su declaración alcanza.`,
+      cell: null,
+    };
+  }
+  if (level === 2) {
+    const room = puzzle.rooms.find(r => r.id === who.roomId);
+    return { text: `${who.name} estaba en ${room.name}.`, cell: null };
+  }
+  return {
+    text: `${who.name} estaba en la casilla marcada (fila ${who.row + 1}, columna ${who.col + 1}).`,
+    cell: { row: who.row, col: who.col },
+  };
 }
