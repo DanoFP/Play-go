@@ -1,178 +1,208 @@
-import { useState, useCallback } from 'react';
-import { generatePuzzle, checkPlacement, isCorrectSolution, canPlaceAt, SCENARIOS } from './utils/puzzleGenerator.js';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  generatePuzzle, checkPlacement, isCorrectSolution, canPlaceAt, getHint,
+  SCENARIOS, DIFFICULTIES,
+} from './utils/puzzleGenerator.js';
 import GameBoard from './components/GameBoard.jsx';
 import SuspectList from './components/SuspectList.jsx';
 import './App.css';
 
+// Al colocar un sospechoso se descarta su fila y su columna enteras.
 function computeAutoEliminated(placements, N) {
   const auto = new Set();
-  for (const [, pos] of Object.entries(placements)) {
+  for (const pos of Object.values(placements)) {
     if (!pos) continue;
-    for (let c = 0; c < N; c++) {
-      if (c !== pos.col) auto.add(`${pos.row},${c}`);
-    }
-    for (let r = 0; r < N; r++) {
-      if (r !== pos.row) auto.add(`${r},${pos.col}`);
-    }
+    for (let c = 0; c < N; c++) if (c !== pos.col) auto.add(`${pos.row},${c}`);
+    for (let r = 0; r < N; r++) if (r !== pos.row) auto.add(`${r},${pos.col}`);
   }
   return auto;
 }
 
-function freshState(numSuspects, scenarioId) {
-  const puzzle = generatePuzzle(numSuspects, scenarioId);
-  const placements = Object.fromEntries(puzzle.suspects.map(s => [s.id, null]));
-  return { puzzle, placements, manualEliminated: new Set(), activeSuspect: puzzle.suspects[0].id };
+function freshState(numSuspects, scenarioId, difficulty) {
+  const puzzle = generatePuzzle(numSuspects, scenarioId, difficulty);
+  return {
+    puzzle,
+    placements: Object.fromEntries(puzzle.suspects.map(s => [s.id, null])),
+    manualEliminated: new Set(),
+    activeSuspect: puzzle.suspects[0].id,
+  };
+}
+
+function formatTime(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, '0');
+  const s = String(sec % 60).padStart(2, '0');
+  return `${m}:${s}`;
 }
 
 export default function App() {
-  const [numSuspects, setNumSuspects] = useState(3);
-  const [scenarioId, setScenarioId] = useState(null);
-  const [state, setState] = useState(() => freshState(3, null));
-  const [gameStatus, setGameStatus] = useState('playing');
-  const [message, setMessage] = useState('');
+  const [numSuspects, setNumSuspects] = useState(4);
+  const [scenarioId, setScenarioId]   = useState(SCENARIOS[0].id);
+  const [difficulty, setDifficulty]   = useState('normal');
+  const [state, setState]             = useState(() => freshState(4, SCENARIOS[0].id, 'normal'));
+  const [gameStatus, setGameStatus]   = useState('playing');
+  const [message, setMessage]         = useState('');
+  const [hint, setHint]               = useState(null);
+  const [hintsUsed, setHintsUsed]     = useState(0);
+  const [seconds, setSeconds]         = useState(0);
 
   const { puzzle, placements, manualEliminated, activeSuspect } = state;
   const autoEliminated = computeAutoEliminated(placements, puzzle.N);
   const eliminated = new Set([...autoEliminated, ...manualEliminated]);
 
-  const scenarioGroup = numSuspects <= 3 ? SCENARIOS.small : SCENARIOS.large;
+  const hintTimer = useRef(null);
 
-  function newGame(n = numSuspects, sid = scenarioId) {
-    setState(freshState(n, sid));
+  useEffect(() => {
+    if (gameStatus !== 'playing') return;
+    const t = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [gameStatus]);
+
+  useEffect(() => () => clearTimeout(hintTimer.current), []);
+
+  function reset(n = numSuspects, sid = scenarioId, diff = difficulty) {
+    setState(freshState(n, sid, diff));
     setGameStatus('playing');
     setMessage('');
-  }
-
-  function handleDifficultyChange(n) {
-    // Reset scenarioId if switching to a group that doesn't have it
-    const newGroup = n <= 3 ? SCENARIOS.small : SCENARIOS.large;
-    const newSid = newGroup.find(s => s.id === scenarioId) ? scenarioId : null;
-    setNumSuspects(n);
-    setScenarioId(newSid);
-    setState(freshState(n, newSid));
-    setGameStatus('playing');
-    setMessage('');
-  }
-
-  function handleScenarioChange(sid) {
-    setScenarioId(sid);
-    setState(freshState(numSuspects, sid));
-    setGameStatus('playing');
-    setMessage('');
+    setHint(null);
+    setHintsUsed(0);
+    setSeconds(0);
   }
 
   const handleCellClick = useCallback((row, col) => {
     if (gameStatus !== 'playing') return;
 
     setState(prev => {
-      const key = `${row},${col}`;
-      const newManual = new Set(prev.manualEliminated);
-      const newPlacements = { ...prev.placements };
+      const k = `${row},${col}`;
+      const manual = new Set(prev.manualEliminated);
+      const next = { ...prev.placements };
 
-      const occupyingSuspect = Object.entries(newPlacements).find(
-        ([, p]) => p && p.row === row && p.col === col
-      );
+      const occupant = Object.entries(next).find(([, p]) => p && p.row === row && p.col === col);
 
       if (prev.activeSuspect) {
-        if (occupyingSuspect && occupyingSuspect[0] === prev.activeSuspect) {
-          newPlacements[prev.activeSuspect] = null;
-          return { ...prev, placements: newPlacements };
+        // Click sobre la propia ficha → retirarla.
+        if (occupant && occupant[0] === prev.activeSuspect) {
+          next[prev.activeSuspect] = null;
+          return { ...prev, placements: next };
         }
-        if (occupyingSuspect) return prev;
-        if (!canPlaceAt(puzzle, row, col)) return prev;
+        if (occupant) return prev;                       // ocupada por otro
+        if (!canPlaceAt(prev.puzzle, row, col)) return prev;  // mobiliario
 
-        newPlacements[prev.activeSuspect] = { row, col };
-        newManual.delete(key);
-        const check = checkPlacement(puzzle, newPlacements);
-        if (!check.valid) return prev;
-        return { ...prev, placements: newPlacements, manualEliminated: newManual };
-      } else {
-        if (occupyingSuspect) return prev;
-        if (newManual.has(key)) {
-          newManual.delete(key);
-        } else {
-          newManual.add(key);
-        }
-        return { ...prev, manualEliminated: newManual };
+        next[prev.activeSuspect] = { row, col };
+        if (!checkPlacement(prev.puzzle, next).valid) return prev;
+        manual.delete(k);
+        return { ...prev, placements: next, manualEliminated: manual };
       }
+
+      // Sin sospechoso activo: alternar marca manual de descarte.
+      if (occupant) return prev;
+      manual.has(k) ? manual.delete(k) : manual.add(k);
+      return { ...prev, manualEliminated: manual };
     });
-  }, [gameStatus, puzzle]);
+  }, [gameStatus]);
 
   function handleSelectSuspect(id) {
-    setState(prev => ({
-      ...prev,
-      activeSuspect: prev.activeSuspect === id ? null : id,
-    }));
+    setState(prev => ({ ...prev, activeSuspect: prev.activeSuspect === id ? null : id }));
   }
 
   function handleCheck() {
     if (isCorrectSolution(puzzle, placements)) {
       setGameStatus('won');
-      setMessage(`¡Correcto! El asesino es ${puzzle.suspects.find(s => s.id === puzzle.murderer)?.name}.`);
+      const name = puzzle.suspects.find(s => s.id === puzzle.murderer)?.name;
+      setMessage(`Caso resuelto en ${formatTime(seconds)}. El asesino es ${name}.`);
     } else {
-      setMessage('Solución incorrecta. Revisa las pistas.');
+      setMessage('Esa distribución no encaja con las declaraciones. Revisá las pistas.');
     }
   }
 
   function handleReveal() {
     setGameStatus('revealed');
-    const murdererName = puzzle.suspects.find(s => s.id === puzzle.murderer)?.name;
-    setMessage(`El asesino era ${murdererName}.`);
+    const name = puzzle.suspects.find(s => s.id === puzzle.murderer)?.name;
+    setMessage(`El asesino era ${name}, que compartía habitación con ${puzzle.victim.name}.`);
   }
 
-  const allPlaced = puzzle.suspects.every(s => placements[s.id] !== null);
+  function handleHint() {
+    const s = getHint(puzzle, placements);
+    if (!s) return;
+    setHint({ row: s.row, col: s.col });
+    setHintsUsed(n => n + 1);
+    setMessage(`Pista: ${s.name} estaba en la casilla marcada.`);
+    clearTimeout(hintTimer.current);
+    hintTimer.current = setTimeout(() => setHint(null), 4000);
+  }
 
-  const activeScenario = puzzle.scenario;
+  const allPlaced = puzzle.suspects.every(s => placements[s.id]);
+  const placedCount = puzzle.suspects.filter(s => placements[s.id]).length;
 
   return (
     <div className="app">
       <header className="header">
-        <div className="case-label">EXPEDIENTE MURDOKU</div>
+        <div className="case-label">Expediente Murdoku · caso {puzzle.N}×{puzzle.N}</div>
         <h1 className="title">
-          {activeScenario ? `${activeScenario.icon} ${activeScenario.name}` : '🔍 Detective'}
+          <span className="title-icon">{puzzle.scenario.icon}</span> {puzzle.scenario.name}
         </h1>
-        <p className="subtitle">Encuentra al asesino usando las pistas</p>
+        <p className="subtitle">
+          Reconstruí la escena y descubrí quién compartía habitación con la víctima
+        </p>
       </header>
 
-      <div className="controls-bar">
-        <div className="difficulty-group">
-          <span className="difficulty-label">Sospechosos:</span>
-          {[3, 4, 5].map(n => (
-            <button
-              key={n}
-              className={`btn-diff ${numSuspects === n ? 'btn-diff-active' : ''}`}
-              onClick={() => handleDifficultyChange(n)}
-            >
-              {n}
-            </button>
-          ))}
+      <div className="controls">
+        <div className="control-group">
+          <span className="control-label">Escenario</span>
+          <div className="chip-row">
+            {SCENARIOS.map(s => (
+              <button
+                key={s.id}
+                className={`chip ${scenarioId === s.id ? 'chip-on' : ''}`}
+                onClick={() => { setScenarioId(s.id); reset(numSuspects, s.id, difficulty); }}
+                title={s.name}
+              >
+                <span className="chip-icon">{s.icon}</span>
+                <span className="chip-text">{s.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <button className="btn btn-new" onClick={() => newGame()}>Nueva partida</button>
+
+        <div className="control-row">
+          <div className="control-group">
+            <span className="control-label">Sospechosos</span>
+            <div className="chip-row">
+              {[3, 4, 5, 6].map(n => (
+                <button
+                  key={n}
+                  className={`chip chip-sm ${numSuspects === n ? 'chip-on' : ''}`}
+                  onClick={() => { setNumSuspects(n); reset(n, scenarioId, difficulty); }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-group">
+            <span className="control-label">Dificultad</span>
+            <div className="chip-row">
+              {Object.entries(DIFFICULTIES).map(([k, d]) => (
+                <button
+                  key={k}
+                  className={`chip chip-sm ${difficulty === k ? 'chip-on' : ''}`}
+                  onClick={() => { setDifficulty(k); reset(numSuspects, scenarioId, k); }}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button className="btn btn-new" onClick={() => reset()}>Caso nuevo</button>
+        </div>
       </div>
 
-      <div className="scenario-bar">
-        <span className="difficulty-label">Escenario:</span>
-        <button
-          className={`btn-scenario ${!scenarioId ? 'btn-scenario-active' : ''}`}
-          onClick={() => handleScenarioChange(null)}
-        >
-          🎲 Aleatorio
-        </button>
-        {scenarioGroup.map(s => (
-          <button
-            key={s.id}
-            className={`btn-scenario ${scenarioId === s.id ? 'btn-scenario-active' : ''}`}
-            onClick={() => handleScenarioChange(s.id)}
-          >
-            {s.icon} {s.name}
-          </button>
-        ))}
-      </div>
-
-      <div className="rules-banner">
-        <strong>Reglas:</strong> Seleccioná un sospechoso y hacé click en la celda donde estaba según la pista.
-        Cada persona ocupa una fila y columna únicas. La víctima ocupa la última casilla libre.
-        El asesino es quien comparte habitación con la víctima.
+      <div className="statusbar">
+        <span className="stat"><span className="stat-k">Tiempo</span> {formatTime(seconds)}</span>
+        <span className="stat"><span className="stat-k">Colocados</span> {placedCount}/{puzzle.suspects.length}</span>
+        <span className="stat"><span className="stat-k">Pistas</span> {hintsUsed}</span>
+        <span className="stat stat-diff">{DIFFICULTIES[puzzle.difficulty].label}</span>
       </div>
 
       <div className="game-area">
@@ -182,6 +212,7 @@ export default function App() {
           eliminated={eliminated}
           onCellClick={handleCellClick}
           gameStatus={gameStatus}
+          hint={hint}
         />
 
         <div className="side-panel">
@@ -199,35 +230,32 @@ export default function App() {
                 className="btn btn-check"
                 onClick={handleCheck}
                 disabled={!allPlaced}
-                title={!allPlaced ? 'Colocá todos los sospechosos primero' : ''}
+                title={!allPlaced ? 'Colocá a todos los sospechosos primero' : ''}
               >
-                Verificar solución
+                Resolver caso
               </button>
-              <button className="btn btn-reveal" onClick={handleReveal}>
-                Revelar respuesta
-              </button>
+              <button className="btn btn-hint" onClick={handleHint}>Pista</button>
+              <button className="btn btn-reveal" onClick={handleReveal}>Rendirse</button>
             </div>
           )}
 
           {message && (
-            <div className={`message ${gameStatus === 'won' ? 'message-win' : gameStatus === 'revealed' ? 'message-reveal' : 'message-error'}`}>
-              {message}
+            <div className={`message message-${gameStatus === 'won' ? 'win' : gameStatus === 'revealed' ? 'reveal' : 'note'}`}>
+              <span>{message}</span>
               {(gameStatus === 'won' || gameStatus === 'revealed') && (
-                <button className="btn btn-new" style={{ marginTop: 10 }} onClick={() => newGame()}>
-                  Jugar de nuevo
-                </button>
+                <button className="btn btn-new" onClick={() => reset()}>Caso nuevo</button>
               )}
             </div>
           )}
 
           <div className="legend">
-            <h4 style={{ margin: '0 0 6px' }}>Instrucciones</h4>
+            <div className="legend-title">Cómo se juega</div>
             <ul>
-              <li>Seleccioná un sospechoso de la lista</li>
-              <li>Clickeá la celda correcta en el mapa</li>
-              <li>Al colocar un sospechoso, su fila y columna se tachan solas</li>
-              <li>Sin sospechoso activo: click marca/desmarca ✕ manual</li>
-              <li>Click en celda propia del sospechoso activo: lo retira</li>
+              <li>Cada persona ocupa una <strong>fila y una columna únicas</strong>.</li>
+              <li>El mobiliario oscurecido <strong>bloquea</strong> la casilla: nadie puede estar ahí.</li>
+              <li>Al colocar a alguien, su fila y columna se tachan solas.</li>
+              <li>Sin sospechoso activo, el click marca o desmarca un descarte ✕.</li>
+              <li>La víctima queda en la última casilla libre; el asesino es quien comparte habitación con ella.</li>
             </ul>
           </div>
         </div>
