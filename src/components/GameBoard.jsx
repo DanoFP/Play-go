@@ -6,11 +6,14 @@ const SUSPECT_COLORS = [
   '#3f8fd0', '#d9534f', '#3fae72', '#e0a33c', '#9b6fc4', '#3fb0ae',
 ];
 
-function cellSize(N) {
-  if (N <= 4) return 84;
-  if (N === 5) return 78;
-  if (N === 6) return 70;
-  return 62;
+function cellSize(H, W) {
+  const big = Math.max(H, W);
+  if (big <= 4) return 84;
+  if (big === 5) return 78;
+  if (big === 6) return 70;
+  if (big === 7) return 62;
+  if (big === 8) return 56;
+  return 50;
 }
 
 // ─── Texturas de suelo ──────────────────────────────────────────────────────
@@ -78,20 +81,15 @@ function FloorPattern({ id, type, color, s }) {
     ),
   }[type] || <rect width={s} height={s} fill={color} />;
 
-  return (
-    <pattern id={id} width={s} height={s} patternUnits="userSpaceOnUse">
-      {body}
-    </pattern>
-  );
+  return <pattern id={id} width={s} height={s} patternUnits="userSpaceOnUse">{body}</pattern>;
 }
 
-// ─── Ficha de persona ───────────────────────────────────────────────────────
+// ─── Ficha ──────────────────────────────────────────────────────────────────
 
 function Token({ name, color, s, variant }) {
   const r = s * 0.29;
   const ring =
-    variant === 'murderer' ? '#e74c3c'
-    : variant === 'victim' ? '#e74c3c'
+    variant === 'murderer' || variant === 'victim' ? '#e74c3c'
     : variant === 'solved' ? '#2ecc71'
     : 'rgba(255,255,255,0.55)';
 
@@ -110,12 +108,9 @@ function Token({ name, color, s, variant }) {
           <path d={`M${-r * 0.52} ${r * 0.62} a${r * 0.52} ${r * 0.48} 0 0 1 ${r * 1.04} 0 Z`} />
         </g>
       )}
-      {/* Placa con el nombre */}
-      <rect x={-r * 1.05} y={r * 1.05} width={r * 2.1} height={r * 0.62} rx={r * 0.31}
-            fill="rgba(12,12,26,0.88)" />
-      <text x={0} y={r * 1.5} textAnchor="middle"
-            fontSize={Math.max(8, r * 0.46)} fill="#e8e4d8"
-            fontFamily="Georgia, serif" fontWeight="700">
+      <rect x={-r * 1.05} y={r * 1.05} width={r * 2.1} height={r * 0.62} rx={r * 0.31} fill="rgba(12,12,26,0.88)" />
+      <text x={0} y={r * 1.5} textAnchor="middle" fontSize={Math.max(8, r * 0.46)}
+            fill="#e8e4d8" fontFamily="Georgia, serif" fontWeight="700">
         {name}
       </text>
     </g>
@@ -125,16 +120,20 @@ function Token({ name, color, s, variant }) {
 // ─── Tablero ────────────────────────────────────────────────────────────────
 
 export default function GameBoard({ puzzle, userPlacements, eliminated, onCellClick, gameStatus, hint }) {
-  const { N, rooms, objects, suspects, victim } = puzzle;
-  const S = cellSize(N);
-  const W = N * S;
-  const GUT = 20;                     // margen para las coordenadas de fila/columna
+  const { H, W, live, rooms, objects, suspects, victim } = puzzle;
+  const S = cellSize(H, W);
+  const GUT = 20;
+  const bw = W * S, bh = H * S;
   const showSolution = gameStatus === 'won' || gameStatus === 'revealed';
+
+  const people = useMemo(
+    () => [...suspects, { ...victim, id: 'victim', isVictim: true }],
+    [suspects, victim]
+  );
 
   const roomAt = useMemo(() => {
     const m = new Map();
-    for (const room of rooms)
-      for (const c of room.cells) m.set(`${c.row},${c.col}`, room);
+    for (const room of rooms) for (const c of room.cells) m.set(`${c.row},${c.col}`, room);
     return m;
   }, [rooms]);
 
@@ -144,64 +143,66 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
     return m;
   }, [objects]);
 
-  // Paredes entre habitaciones y contra el borde exterior. De cada par de
-  // habitaciones vecinas se abre una puerta en uno de los tramos compartidos.
+  // Paredes: hay tabique donde cambia de habitación, y muro exterior donde la
+  // planta se acaba — que ahora incluye las celdas recortadas, no solo el borde
+  // del rectángulo. De cada par de habitaciones vecinas se abre una puerta.
   const { walls, doors } = useMemo(() => {
     const segs = [];
     const byPair = new Map();
+    const isLive = (r, c) => live.has(`${r},${c}`);
 
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
+    for (let r = 0; r < H; r++) {
+      for (let c = 0; c < W; c++) {
+        if (!isLive(r, c)) continue;
         const mine = roomAt.get(`${r},${c}`);
-        // Solo se miran el borde derecho y el inferior para no duplicar tramos.
-        const checks = [
-          { dr: 0, dc: 1, x1: (c + 1) * S, y1: r * S, x2: (c + 1) * S, y2: (r + 1) * S },
+        const sides = [
+          { dr: -1, dc: 0, x1: c * S, y1: r * S, x2: (c + 1) * S, y2: r * S },
           { dr: 1, dc: 0, x1: c * S, y1: (r + 1) * S, x2: (c + 1) * S, y2: (r + 1) * S },
+          { dr: 0, dc: -1, x1: c * S, y1: r * S, x2: c * S, y2: (r + 1) * S },
+          { dr: 0, dc: 1, x1: (c + 1) * S, y1: r * S, x2: (c + 1) * S, y2: (r + 1) * S },
         ];
-        for (const ch of checks) {
-          const nr = r + ch.dr, nc = c + ch.dc;
-          const outside = nr >= N || nc >= N;
-          const other = outside ? null : roomAt.get(`${nr},${nc}`);
-          if (!outside && other && other.id === mine.id) continue;
-
-          const seg = { ...ch, outer: outside };
-          segs.push(seg);
-          if (!outside && other) {
-            const pair = [mine.id, other.id].sort().join('|');
-            if (!byPair.has(pair)) byPair.set(pair, []);
-            byPair.get(pair).push(seg);
+        for (const sd of sides) {
+          const nr = r + sd.dr, nc = c + sd.dc;
+          if (!isLive(nr, nc)) {                     // fuera de la planta
+            segs.push({ ...sd, outer: true });
+            continue;
           }
+          const other = roomAt.get(`${nr},${nc}`);
+          if (!other || other.id === mine.id) continue;
+          // Solo un lado del par dibuja el tabique, para no duplicarlo.
+          if (sd.dr < 0 || sd.dc < 0) continue;
+          const seg = { ...sd, outer: false };
+          segs.push(seg);
+          const pair = [mine.id, other.id].sort().join('|');
+          if (!byPair.has(pair)) byPair.set(pair, []);
+          byPair.get(pair).push(seg);
         }
       }
     }
-    // Bordes superior e izquierdo del plano.
-    for (let i = 0; i < N; i++) {
-      segs.push({ x1: i * S, y1: 0, x2: (i + 1) * S, y2: 0, outer: true });
-      segs.push({ x1: 0, y1: i * S, x2: 0, y2: (i + 1) * S, outer: true });
-    }
 
     const doorSet = new Set();
-    for (const [, list] of byPair) {
-      const chosen = list[Math.floor(list.length / 2)];
-      doorSet.add(chosen);
-    }
+    for (const [, list] of byPair) doorSet.add(list[Math.floor(list.length / 2)]);
+    return { walls: segs.filter(s => !doorSet.has(s)), doors: [...doorSet] };
+  }, [roomAt, live, H, W, S]);
 
-    return {
-      walls: segs.filter(s => !doorSet.has(s)),
-      doors: [...doorSet],
-    };
-  }, [roomAt, N, S]);
-
-  function suspectPlacedAt(row, col) {
-    return suspects.find(s => {
-      const p = userPlacements[s.id];
-      return p && p.row === row && p.col === col;
+  const placedAt = (row, col) =>
+    people.find(p => {
+      const u = userPlacements[p.id];
+      return u && u.row === row && u.col === col;
     });
-  }
+
+  const liveCells = useMemo(() => {
+    const out = [];
+    for (const k of live) {
+      const [r, c] = k.split(',').map(Number);
+      out.push({ row: r, col: c });
+    }
+    return out;
+  }, [live]);
 
   return (
     <div className="board-wrapper">
-      <svg width={W + GUT} height={W + GUT} viewBox={`0 0 ${W + GUT} ${W + GUT}`} className="board-svg">
+      <svg width={bw + GUT} height={bh + GUT} viewBox={`0 0 ${bw + GUT} ${bh + GUT}`} className="board-svg">
         <defs>
           {rooms.map(room => (
             <FloorPattern key={room.id} id={`floor-${room.id}`} type={room.floor} color={room.color} s={S} />
@@ -209,7 +210,6 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
           <filter id="board-vignette" x="-10%" y="-10%" width="120%" height="120%">
             <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.35" />
           </filter>
-          {/* Trama para las casillas que el mobiliario deja inservibles */}
           <pattern id="blocked-hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width="9" height="9" fill="rgba(14,10,6,0.13)" />
             <line x1="0" y1="0" x2="0" y2="9" stroke="rgba(0,0,0,0.17)" strokeWidth="2.5" />
@@ -217,109 +217,87 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
         </defs>
 
         {/* Coordenadas: las pistas hablan de "fila 3" y "columna 5" */}
-        {Array.from({ length: N }, (_, i) => (
-          <g key={`coord${i}`} fontFamily="'Source Code Pro', monospace" fontSize={10} fill="#6f6a5e">
-            <text x={GUT + i * S + S / 2} y={13} textAnchor="middle">{i + 1}</text>
-            <text x={10} y={GUT + i * S + S / 2 + 4} textAnchor="middle">{i + 1}</text>
-          </g>
+        {Array.from({ length: W }, (_, i) => (
+          <text key={`cx${i}`} x={GUT + i * S + S / 2} y={13} textAnchor="middle"
+                fontFamily="'Source Code Pro', monospace" fontSize={10} fill="#6f6a5e">{i + 1}</text>
+        ))}
+        {Array.from({ length: H }, (_, i) => (
+          <text key={`cy${i}`} x={10} y={GUT + i * S + S / 2 + 4} textAnchor="middle"
+                fontFamily="'Source Code Pro', monospace" fontSize={10} fill="#6f6a5e">{i + 1}</text>
         ))}
 
         <g transform={`translate(${GUT}, ${GUT})`}>
+          {/* Suelos, solo en las celdas que existen */}
+          {rooms.map(room => room.cells.map(c => (
+            <rect key={`f-${c.row}-${c.col}`} x={c.col * S} y={c.row * S} width={S} height={S}
+                  fill={`url(#floor-${room.id})`} />
+          )))}
 
-        {/* Suelos */}
-        {rooms.map(room =>
-          room.cells.map(c => (
-            <rect
-              key={`f-${c.row}-${c.col}`}
-              x={c.col * S} y={c.row * S} width={S} height={S}
-              fill={`url(#floor-${room.id})`}
-            />
-          ))
-        )}
+          {objects.filter(o => !OBJECT_TYPES[o.type].occupiable).map(o => (
+            <rect key={`b-${o.row}-${o.col}`} x={o.col * S} y={o.row * S} width={S} height={S}
+                  fill="url(#blocked-hatch)" />
+          ))}
 
-        {/* Casillas bloqueadas: trama diagonal para que se lean de un vistazo */}
-        {objects.filter(o => !OBJECT_TYPES[o.type].occupiable).map(o => (
-          <rect key={`b-${o.row}-${o.col}`}
-                x={o.col * S} y={o.row * S} width={S} height={S}
-                fill="url(#blocked-hatch)" />
-        ))}
+          {rooms.map(room => (
+            <text key={`l-${room.id}`}
+                  x={room.labelCell.col * S + S / 2} y={room.labelCell.row * S + 11}
+                  textAnchor="middle" fontSize={Math.max(7, S * 0.115)} fill="rgba(0,0,0,0.42)"
+                  fontFamily="Georgia, serif" fontWeight="700" letterSpacing="0.8"
+                  style={{ pointerEvents: 'none' }}>
+              {room.name.toUpperCase()}
+            </text>
+          ))}
 
-        {/* Etiquetas de habitación */}
-        {rooms.map(room => (
-          <text
-            key={`l-${room.id}`}
-            x={room.labelCell.col * S + S / 2}
-            y={room.labelCell.row * S + 11}
-            textAnchor="middle"
-            fontSize={Math.max(7, S * 0.115)}
-            fill="rgba(0,0,0,0.42)"
-            fontFamily="Georgia, serif"
-            fontWeight="700"
-            letterSpacing="0.8"
-            style={{ pointerEvents: 'none', textTransform: 'uppercase' }}
-          >
-            {room.name.toUpperCase()}
-          </text>
-        ))}
-
-        {/* Mobiliario */}
-        {objects.map(o => (
-          <g key={`o-${o.row}-${o.col}`}
-             transform={`translate(${o.col * S + S / 2}, ${o.row * S + S / 2 + S * 0.06})`}
-             style={{ pointerEvents: 'none' }}
-             filter="url(#board-vignette)">
-            <Furniture type={o.type} s={S} />
-          </g>
-        ))}
-
-        {/* Rejilla suave */}
-        {Array.from({ length: N - 1 }, (_, i) => (
-          <g key={`g${i}`} style={{ pointerEvents: 'none' }}>
-            <line x1={0} y1={(i + 1) * S} x2={W} y2={(i + 1) * S} stroke="rgba(0,0,0,0.07)" strokeWidth={1} />
-            <line x1={(i + 1) * S} y1={0} x2={(i + 1) * S} y2={W} stroke="rgba(0,0,0,0.07)" strokeWidth={1} />
-          </g>
-        ))}
-
-        {/* Puertas: hueco claro con dos jambas */}
-        {doors.map((d, i) => {
-          const horizontal = d.y1 === d.y2;
-          const mx = (d.x1 + d.x2) / 2, my = (d.y1 + d.y2) / 2;
-          const half = S * 0.24;
-          return (
-            <g key={`d${i}`} style={{ pointerEvents: 'none' }}>
-              {horizontal ? (
-                <>
-                  <line x1={d.x1} y1={my} x2={mx - half} y2={my} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
-                  <line x1={mx + half} y1={my} x2={d.x2} y2={my} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
-                  <line x1={mx - half} y1={my} x2={mx + half} y2={my} stroke="rgba(180,150,110,0.7)" strokeWidth={2} strokeDasharray="3 3" />
-                </>
-              ) : (
-                <>
-                  <line x1={mx} y1={d.y1} x2={mx} y2={my - half} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
-                  <line x1={mx} y1={my + half} x2={mx} y2={d.y2} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
-                  <line x1={mx} y1={my - half} x2={mx} y2={my + half} stroke="rgba(180,150,110,0.7)" strokeWidth={2} strokeDasharray="3 3" />
-                </>
-              )}
+          {objects.map(o => (
+            <g key={`o-${o.row}-${o.col}`}
+               transform={`translate(${o.col * S + S / 2}, ${o.row * S + S / 2 + S * 0.06})`}
+               style={{ pointerEvents: 'none' }} filter="url(#board-vignette)">
+              <Furniture type={o.type} s={S} />
             </g>
-          );
-        })}
+          ))}
 
-        {/* Paredes */}
-        {walls.map((w, i) => (
-          <line key={`w${i}`} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2}
-                stroke={w.outer ? '#2a2118' : '#3a2f22'}
-                strokeWidth={w.outer ? 5 : 3.5}
-                strokeLinecap="square"
-                style={{ pointerEvents: 'none' }} />
-        ))}
+          {/* Rejilla, solo dentro de la planta */}
+          {liveCells.map(c => (
+            <rect key={`g-${c.row}-${c.col}`} x={c.col * S} y={c.row * S} width={S} height={S}
+                  fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={1} style={{ pointerEvents: 'none' }} />
+          ))}
 
-        {/* Marcas de descarte */}
-        {Array.from({ length: N }, (_, r) =>
-          Array.from({ length: N }, (_, c) => {
+          {doors.map((d, i) => {
+            const horizontal = d.y1 === d.y2;
+            const mx = (d.x1 + d.x2) / 2, my = (d.y1 + d.y2) / 2;
+            const half = S * 0.24;
+            return (
+              <g key={`d${i}`} style={{ pointerEvents: 'none' }}>
+                {horizontal ? (
+                  <>
+                    <line x1={d.x1} y1={my} x2={mx - half} y2={my} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
+                    <line x1={mx + half} y1={my} x2={d.x2} y2={my} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
+                    <line x1={mx - half} y1={my} x2={mx + half} y2={my} stroke="rgba(180,150,110,0.7)" strokeWidth={2} strokeDasharray="3 3" />
+                  </>
+                ) : (
+                  <>
+                    <line x1={mx} y1={d.y1} x2={mx} y2={my - half} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
+                    <line x1={mx} y1={my + half} x2={mx} y2={d.y2} stroke="#3a2f22" strokeWidth={3.5} strokeLinecap="round" />
+                    <line x1={mx} y1={my - half} x2={mx} y2={my + half} stroke="rgba(180,150,110,0.7)" strokeWidth={2} strokeDasharray="3 3" />
+                  </>
+                )}
+              </g>
+            );
+          })}
+
+          {walls.map((w, i) => (
+            <line key={`w${i}`} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2}
+                  stroke={w.outer ? '#2a2118' : '#3a2f22'}
+                  strokeWidth={w.outer ? 5 : 3.5} strokeLinecap="square"
+                  style={{ pointerEvents: 'none' }} />
+          ))}
+
+          {/* Descartes */}
+          {!showSolution && liveCells.map(({ row: r, col: c }) => {
             if (!eliminated.has(`${r},${c}`)) return null;
-            if (suspectPlacedAt(r, c)) return null;
-            if (objAt.has(`${r},${c}`) && !OBJECT_TYPES[objAt.get(`${r},${c}`).type].occupiable) return null;
-            if (showSolution) return null;
+            if (placedAt(r, c)) return null;
+            const o = objAt.get(`${r},${c}`);
+            if (o && !OBJECT_TYPES[o.type].occupiable) return null;
             const cx = c * S + S / 2, cy = r * S + S / 2, k = S * 0.2;
             return (
               <g key={`x-${r}-${c}`} style={{ pointerEvents: 'none' }} opacity={0.55}>
@@ -327,66 +305,46 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
                 <line x1={cx + k} y1={cy - k} x2={cx - k} y2={cy + k} stroke="#a8322a" strokeWidth={3} strokeLinecap="round" />
               </g>
             );
-          })
-        )}
+          })}
 
-        {/* Pista: anillo pulsante sobre la casilla correcta */}
-        {hint && !showSolution && (
-          <circle
-            className="hint-ring"
-            cx={hint.col * S + S / 2} cy={hint.row * S + S / 2} r={S * 0.4}
-            fill="none" stroke="#f0c040" strokeWidth={3}
-            style={{ pointerEvents: 'none' }}
-          />
-        )}
+          {hint && !showSolution && (
+            <circle className="hint-ring" cx={hint.col * S + S / 2} cy={hint.row * S + S / 2} r={S * 0.4}
+                    fill="none" stroke="#f0c040" strokeWidth={3} style={{ pointerEvents: 'none' }} />
+          )}
 
-        {/* Fichas colocadas por el jugador */}
-        {!showSolution && suspects.map((s, i) => {
-          const p = userPlacements[s.id];
-          if (!p) return null;
-          return (
-            <g key={`t-${s.id}`} transform={`translate(${p.col * S + S / 2}, ${p.row * S + S / 2})`}
-               style={{ pointerEvents: 'none' }}>
-              <Token name={s.name} color={SUSPECT_COLORS[i % SUSPECT_COLORS.length]} s={S} variant="placed" />
-            </g>
-          );
-        })}
-
-        {/* Solución revelada */}
-        {showSolution && (
-          <>
-            {suspects.map((s, i) => (
-              <g key={`sol-${s.id}`} transform={`translate(${s.col * S + S / 2}, ${s.row * S + S / 2})`}
+          {/* Fichas del jugador */}
+          {!showSolution && people.map((p, i) => {
+            const u = userPlacements[p.id];
+            if (!u) return null;
+            return (
+              <g key={`t-${p.id}`} transform={`translate(${u.col * S + S / 2}, ${u.row * S + S / 2})`}
                  style={{ pointerEvents: 'none' }}>
-                <Token
-                  name={s.name}
-                  color={s.id === puzzle.murderer ? '#c0392b' : SUSPECT_COLORS[i % SUSPECT_COLORS.length]}
-                  s={S}
-                  variant={s.id === puzzle.murderer ? 'murderer' : 'solved'}
-                />
+                <Token name={p.name} s={S}
+                       color={p.isVictim ? '#5d6d7e' : SUSPECT_COLORS[i % SUSPECT_COLORS.length]}
+                       variant={p.isVictim ? 'victim' : 'placed'} />
               </g>
-            ))}
-            <g transform={`translate(${victim.col * S + S / 2}, ${victim.row * S + S / 2})`}
-               style={{ pointerEvents: 'none' }}>
-              <Token name={victim.name} color="#5d6d7e" s={S} variant="victim" />
-            </g>
-          </>
-        )}
+            );
+          })}
 
-        {/* Zonas clicables */}
-        {Array.from({ length: N }, (_, r) =>
-          Array.from({ length: N }, (_, c) => {
+          {/* Solución */}
+          {showSolution && people.map((p, i) => (
+            <g key={`sol-${p.id}`} transform={`translate(${p.col * S + S / 2}, ${p.row * S + S / 2})`}
+               style={{ pointerEvents: 'none' }}>
+              <Token name={p.name} s={S}
+                     color={p.isVictim ? '#5d6d7e' : p.id === puzzle.murderer ? '#c0392b' : SUSPECT_COLORS[i % SUSPECT_COLORS.length]}
+                     variant={p.isVictim ? 'victim' : p.id === puzzle.murderer ? 'murderer' : 'solved'} />
+            </g>
+          ))}
+
+          {/* Zonas clicables, solo sobre celdas existentes */}
+          {liveCells.map(({ row: r, col: c }) => {
             const o = objAt.get(`${r},${c}`);
             const blocked = o && !OBJECT_TYPES[o.type].occupiable;
             return (
-              <rect
-                key={`hit-${r}-${c}`}
-                className={`cell-hit ${blocked ? 'cell-hit-blocked' : ''}`}
-                x={c * S} y={r * S} width={S} height={S}
-                fill="transparent"
-                onClick={() => gameStatus === 'playing' && !blocked && onCellClick(r, c)}
-                style={{ cursor: gameStatus === 'playing' && !blocked ? 'pointer' : 'default' }}
-              >
+              <rect key={`hit-${r}-${c}`} className={`cell-hit ${blocked ? 'cell-hit-blocked' : ''}`}
+                    x={c * S} y={r * S} width={S} height={S} fill="transparent"
+                    onClick={() => gameStatus === 'playing' && !blocked && onCellClick(r, c)}
+                    style={{ cursor: gameStatus === 'playing' && !blocked ? 'pointer' : 'default' }}>
                 {o && (
                   <title>
                     {OBJECT_TYPES[o.type].def}
@@ -395,8 +353,7 @@ export default function GameBoard({ puzzle, userPlacements, eliminated, onCellCl
                 )}
               </rect>
             );
-          })
-        )}
+          })}
         </g>
       </svg>
     </div>

@@ -176,10 +176,33 @@ body {
 /* ── Tarjetas de sospechoso ── */
 .suspect-list { display: flex; flex-direction: column; gap: 7px; }
 
+/* Número de paso en la cadena de deducción */
+.card-step {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #8a857a;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+}
+.suspect-active .card-step {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #11111c;
+}
+
 .suspect-card {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
+  gap: 9px;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.07);
   border-left: 3px solid var(--accent);
@@ -265,13 +288,20 @@ body {
 .victim-card {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
+  gap: 9px;
   background: rgba(231,76,60,0.05);
-  border: 1px dashed rgba(231,76,60,0.28);
+  border: 1px dashed rgba(231,76,60,0.3);
+  border-left: 3px solid #e74c3c;
   border-radius: 8px;
   padding: 10px 12px;
-  margin-top: 3px;
+  transition: background 0.15s, box-shadow 0.15s;
 }
+.victim-card:hover { background: rgba(231,76,60,0.09); }
+.victim-card.suspect-active {
+  background: rgba(231,76,60,0.12);
+  box-shadow: 0 0 0 1px #e74c3c, 0 4px 18px rgba(0,0,0,0.4);
+}
+.victim-card.suspect-placed { border-style: solid; }
 
 /* ── Botones ── */
 .btn {
